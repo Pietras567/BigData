@@ -3,6 +3,11 @@ import pandas as pd
 from google.cloud import bigquery
 import pycountry
 
+# Color constants
+GREEN = '\033[92m'
+BASIC = '\033[0m'
+
+
 def update_country_codes(dataframe):
     # Change "Netherlands Antilles" to "Netherlands"
     dataframe.loc[dataframe['country_name'] == 'Netherlands Antilles', 'country_name'] = 'Netherlands'
@@ -44,7 +49,7 @@ def main():
 
     # 4.1 data on all countries of the world, comprehensible to humans and universal and potentially future-proof for further processing.
     # iso_3166_1_alpha_3, country_name
-    print("\n\nStarted extracting and cleaning countries data")
+    print(f"\n\n{GREEN}Started extracting and cleaning countries data{BASIC}")
 
     query = ('select iso_3166_1_alpha_3, country_name from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
     query_job = client.query(query)
@@ -63,11 +68,11 @@ def main():
     print(f"Number of records with empty fields in country_name: {df1['country_name'].isnull().sum().sum()}")
 
     df1.to_csv('exported/countries.csv', index=False)
-    print("Ended extracting and cleaning countries data")
+    print(f"{GREEN}Ended extracting and cleaning countries data{BASIC}")
 
     # 4.2 COVID-19 incidence data worldwide
     # date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested
-    print("\n\nStarted extracting and cleaning COVID-19 incidents data")
+    print(f"\n\n{GREEN}Started extracting and cleaning COVID-19 incidents data{BASIC}")
 
     query = ('select date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
     query_job = client.query(query)
@@ -78,11 +83,11 @@ def main():
 
     df2.to_csv('exported/incidence.csv', index=False)
 
-    print("Ended extracting and cleaning COVID-19 incidents data")
+    print(f"{GREEN}Ended extracting and cleaning COVID-19 incidents data{BASIC}")
 
     # 4.3 data on the problem of human mortality caused by the virus
     # new_deceased, cumulative_deceased,
-    print("\n\nStarted extracting and cleaning human mortality data")
+    print(f"\n\n{GREEN}Started extracting and cleaning human mortality data{BASIC}")
 
     query = ('select new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
     query_job = client.query(query)
@@ -93,11 +98,11 @@ def main():
 
     df3.to_csv('exported/mortality.csv', index=False)
 
-    print("Ended extracting and cleaning human mortality data")
+    print(f"{GREEN}Ended extracting and cleaning human mortality data{BASIC}")
 
     # 4.4 COVID-19 vaccination data
     # new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered
-    print("\n\nStarted extracting and cleaning vaccination data")
+    print(f"\n\n{GREEN}Started extracting and cleaning vaccination data{BASIC}")
 
     query = ('select new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
     query_job = client.query(query)
@@ -108,11 +113,11 @@ def main():
 
     df4.to_csv('exported/vaccination.csv', index=False)
 
-    print("Ended extracting and cleaning vaccination data")
+    print(f"{GREEN}Ended extracting and cleaning vaccination data{BASIC}")
 
     # 4.5 the state of health of the population
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
-    print("\n\nStarted extracting and cleaning the state of health of the population data")
+    print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
     query = ('select smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
     query_job = client.query(query)
@@ -123,7 +128,7 @@ def main():
 
     df5.to_csv('exported/health.csv', index=False)
 
-    print("Ended extracting and cleaning the state of health of the population data")
+    print(f"{GREEN}Ended extracting and cleaning the state of health of the population data{BASIC}")
 
 
 if __name__ == '__main__':
