@@ -25,7 +25,7 @@ def update_country_codes(dataframe):
     return dataframe
 
 def main():
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-a8b1ef636fd3.json" # path to API key
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-2ab5d0de9937.json" # path to API key
     client = bigquery.Client()
 
     #query = ('select * from bigquery-public-data.covid19_open_data.covid19_open_data limit 10')
@@ -41,7 +41,7 @@ def main():
     # iso_3166_1_alpha_3, country_name
     print("\n\nStarted extracting and cleaning countries data")
 
-    query = ('select iso_3166_1_alpha_3, country_name from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select iso_3166_1_alpha_3, country_name from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
     query_job = client.query(query)
     query_result = query_job.result()
     df1 = query_result.to_dataframe()
@@ -64,23 +64,61 @@ def main():
     # date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested
     print("\n\nStarted extracting and cleaning COVID-19 incidents data")
 
+    query = ('select date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
+    query_job = client.query(query)
+    query_result = query_job.result()
+    df2 = query_result.to_dataframe()
+
+    print(f"Number of records with empty fields: {df2.isnull().sum().sum()}")
+
+    df2.to_csv('incidence.csv', index=False)
+
     print("Ended extracting and cleaning COVID-19 incidents data")
 
     # 4.3 data on the problem of human mortality caused by the virus
     # new_deceased, cumulative_deceased,
     print("\n\nStarted extracting and cleaning human mortality data")
-    
+
+    query = ('select new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
+    query_job = client.query(query)
+    query_result = query_job.result()
+    df3 = query_result.to_dataframe()
+
+    print(f"Number of records with empty fields: {df3.isnull().sum().sum()}")
+
+    df3.to_csv('mortality.csv', index=False)
+
     print("Ended extracting and cleaning human mortality data")
 
     # 4.4 COVID-19 vaccination data
     # new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered
     print("\n\nStarted extracting and cleaning vaccination data")
 
+    query = ('select new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
+    query_job = client.query(query)
+    query_result = query_job.result()
+    df4 = query_result.to_dataframe()
+
+    print(f"Number of records with empty fields: {df4.isnull().sum().sum()}")
+
+    df4.to_csv('vaccination.csv', index=False)
+
     print("Ended extracting and cleaning vaccination data")
 
-    # 4.5 to do
+    # 4.5 the state of health of the population
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
+    print("\n\nStarted extracting and cleaning the state of health of the population data")
 
+    query = ('select smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data limit 100')
+    query_job = client.query(query)
+    query_result = query_job.result()
+    df5 = query_result.to_dataframe()
+
+    print(f"Number of records with empty fields: {df5.isnull().sum().sum()}")
+
+    df5.to_csv('health.csv', index=False)
+
+    print("Ended extracting and cleaning the state of health of the population data")
 
 
 if __name__ == '__main__':
