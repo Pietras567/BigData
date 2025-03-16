@@ -42,7 +42,7 @@ def main():
     # iso_3166_1_alpha_3, country_name
     print(f"\n\n{GREEN}Started extracting and cleaning countries data{BASIC}")
 
-    query = ('select iso_3166_1_alpha_3, country_name from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, iso_3166_1_alpha_3, wikidata_id, aggregation_level, country_name from bigquery-public-data.covid19_open_data.covid19_open_data')
     query_job = client.query(query)
     query_result = query_job.result()
     df1 = query_result.to_dataframe()
@@ -51,7 +51,7 @@ def main():
     print(f"Number of records with empty fields in iso_3166_1_alpha_3: {df1['iso_3166_1_alpha_3'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in country_name: {df1['country_name'].isnull().sum().sum()}")
 
-    df1 = update_country_codes(df1)
+   # df1 = update_country_codes(df1)
 
     print(f"Number of records with empty fields: {df1.isnull().sum().sum()}")
     print(f"Number of records with empty fields in iso_3166_1_alpha_3: {df1['iso_3166_1_alpha_3'].isnull().sum().sum()}")
@@ -64,7 +64,7 @@ def main():
     # date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested
     print(f"\n\n{GREEN}Started extracting and cleaning COVID-19 incidents data{BASIC}")
 
-    query = ('select date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data')
     query_job = client.query(query)
     query_result = query_job.result()
     df2 = query_result.to_dataframe()
@@ -84,7 +84,7 @@ def main():
     # new_deceased, cumulative_deceased,
     print(f"\n\n{GREEN}Started extracting and cleaning human mortality data{BASIC}")
 
-    query = ('select new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data')
     query_job = client.query(query)
     query_result = query_job.result()
     df3 = query_result.to_dataframe()
@@ -101,7 +101,7 @@ def main():
     # new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered
     print(f"\n\n{GREEN}Started extracting and cleaning vaccination data{BASIC}")
 
-    query = ('select new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data')
     query_job = client.query(query)
     query_result = query_job.result()
     df4 = query_result.to_dataframe()
@@ -121,7 +121,7 @@ def main():
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
     print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
-    query = ('select smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data')
     query_job = client.query(query)
     query_result = query_job.result()
     df5 = query_result.to_dataframe()
@@ -137,6 +137,25 @@ def main():
     df5.to_csv('exported/health.csv', index=False)
 
     print(f"{GREEN}Ended extracting and cleaning the state of health of the population data{BASIC}")
+
+    # Combine all dataframes into one
+    print(f"\n\n{GREEN}Started linking data frames{BASIC}")
+
+    # Combine all dataframes into one dataframe
+    #combined_df = pd.concat([df1, df2, df3, df4, df5], axis=1)
+    combined_df = df1.merge(df2, on=["location_key", "date"], how="outer")
+    combined_df = combined_df.merge(df3, on=["location_key", "date"], how="outer")
+    combined_df = combined_df.merge(df4, on=["location_key", "date"], how="outer")
+    combined_df = combined_df.merge(df5, on=["location_key", "date"], how="outer")
+
+    #combined_df = combined_df[combined_df['aggregation_level'] == 0]
+    # Group by country and sort by date
+    combined_df = combined_df.sort_values(by=['location_key', 'date'])
+
+    # Saving the combined dataframe to a CSV file
+    combined_df.to_csv('exported/combined.csv', index=False)
+
+    print(f"{GREEN}Ended merging data frames and saved to exported/combined.csv{BASIC}")
 
 
 if __name__ == '__main__':
