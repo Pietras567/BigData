@@ -152,6 +152,10 @@ def main():
     # Group by country and sort by date
     combined_df = combined_df.sort_values(by=['location_key', 'date'])
 
+    # Filter and save each level directly to a file
+    for level in [0, 1, 2, 3]:
+        combined_df.query(f"aggregation_level == {level}").to_csv(f'exported/combined_level_{level}.csv', index=False)
+
     # Saving the combined dataframe to a CSV file
     combined_df.to_csv('exported/combined.csv', index=False)
 
