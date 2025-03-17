@@ -21,11 +21,35 @@ def clean_incidence_data(dataframe):
     def process_group(group):
         sorted_group = group.sort_values('date')
 
-        # Fixing negative values
+        # Fixing negative values # to do - ty się sypie na porównaniu algorytm - do naprawienia
         for column in ['new_confirmed', 'cumulative_confirmed', 'new_tested', 'cumulative_tested']:
             sorted_group.loc[sorted_group[column] < 0, column] = sorted_group.loc[sorted_group[column] < 0, column] * -1
 
         # Cleaning time series - repairing missing values
+        """
+        Algorytm przetwarza wiersze w obrębie każdej grupy w następujący sposób:
+
+        1. Jeśli w trakcie iteracji wartość w polu 'new' jest pusta (None), a aktualne pole 'cumulative' zawiera
+           niepustą wartość, to pole 'new' zostaje wypełnione różnicą pomiędzy poprzednią wartością 'cumulative'
+           i aktualną wartością 'cumulative'.
+
+        2. Jeśli aktualne pole 'cumulative' jest puste, należy wyszukać najbliższą (dalej w czasie) niepustą
+           wartość 'cumulative'. Następnie należy wyliczyć różnicę między poprzednim 'cumulative' a najbliższym
+           późniejszym 'cumulative'.
+
+        3. W przypadku gdy aktualne pole 'cumulative' pozostaje puste, to dla uzyskanej (w punkcie 2) różnicy
+           należy odjąć wszystkie niepuste wartości 'new' znajdujące się w zakresie między poprzednim polem
+           'cumulative' a następnym niepustym 'cumulative'. Pozostałą wartość dzieli się przez liczbę pustych pól
+           'new' w tym samym zakresie, zaokrągla do pełnej liczby i zapisuje w aktualnym polu 'new'. Następnie
+           pole 'cumulative' uzupełniane jest sumą poprzedniej wartości 'cumulative' oraz bieżącej wartości 'new'.
+
+        4. Jeśli żadna wartość w grupie nie jest inna niż None (czyli wszystkie są puste), to wszystkie pola
+           'new' i 'cumulative' zostają wypełnione zerami.
+
+        5. Jeśli pierwsza wartość 'new' i 'cumulative' jest pusta, wstaw w obu kolumnach zera. Jeśli tylko jedna
+           z nich jest pusta, należy ją uzupełnić wartością drugiej.
+        """
+        # to do - algorytm powyżej
 
         return sorted_group
 
