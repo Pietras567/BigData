@@ -68,6 +68,21 @@ def clean_incidence_data(dataframe):
 
     return result_df
 
+def clean_mortality_data(dataframe):
+
+
+    return dataframe
+
+def clean_vaccination_data(dataframe):
+
+
+    return dataframe
+
+def clean_health_data(dataframe):
+
+    
+    return dataframe
+
 
 def main():
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-2ab5d0de9937.json" # path to API key
@@ -148,6 +163,12 @@ def main():
     print(f"Number of records with empty fields in new_deceased: {df3['new_deceased'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_deceased: {df3['cumulative_deceased'].isnull().sum().sum()}")
 
+    df3 = clean_mortality_data(df3)
+
+    print(f"Number of records with empty fields: {df3.isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_deceased: {df3['new_deceased'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_deceased: {df3['cumulative_deceased'].isnull().sum().sum()}")
+
     df3.to_csv('exported/mortality.csv', index=False)
 
     print(f"{GREEN}Ended extracting and cleaning human mortality data{BASIC}")
@@ -168,6 +189,15 @@ def main():
     print(f"Number of records with empty fields in new_vaccine_doses_administered: {df4['new_vaccine_doses_administered'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_vaccine_doses_administered: {df4['cumulative_vaccine_doses_administered'].isnull().sum().sum()}")
 
+    df4 = clean_vaccination_data(df4)
+
+    print(f"Number of records with empty fields: {df4.isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_persons_vaccinated: {df4['new_persons_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_persons_fully_vaccinated: {df4['new_persons_fully_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_persons_vaccinated: {df4['cumulative_persons_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_vaccine_doses_administered: {df4['new_vaccine_doses_administered'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_vaccine_doses_administered: {df4['cumulative_vaccine_doses_administered'].isnull().sum().sum()}")
+
     df4.to_csv('exported/vaccination.csv', index=False)
 
     print(f"{GREEN}Ended extracting and cleaning vaccination data{BASIC}")
@@ -180,6 +210,16 @@ def main():
     query_job = client.query(query)
     query_result = query_job.result()
     df5 = query_result.to_dataframe()
+
+    print(f"Number of records with empty fields: {df5.isnull().sum().sum()}")
+    print(f"Number of records with empty fields in smoking_prevalence: {df5['smoking_prevalence'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in diabetes_prevalence: {df5['diabetes_prevalence'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in infant_mortality_rate: {df5['infant_mortality_rate'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in nurses_per_1000: {df5['nurses_per_1000'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in physicians_per_1000: {df5['physicians_per_1000'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in health_expenditure_usd: {df5['health_expenditure_usd'].isnull().sum().sum()}")
+
+    df5 = clean_health_data(df5)
 
     print(f"Number of records with empty fields: {df5.isnull().sum().sum()}")
     print(f"Number of records with empty fields in smoking_prevalence: {df5['smoking_prevalence'].isnull().sum().sum()}")
