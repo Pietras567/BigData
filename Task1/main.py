@@ -11,19 +11,27 @@ BASIC = '\033[0m'
 def clean_countries_data(dataframe):
     # Drop "Netherlands Antilles"
     dataframe = dataframe[dataframe['country_name'] != 'Netherlands Antilles']
-    print(f"{BLUE}Dropped rows with Netherlands Antilles{BASIC}")
+    print(f"{BLUE}Dropped rows with Netherlands Antilles"
+          f"\nCleaned countries data{BASIC}")
 
     return dataframe
+
+def process_group(group):
+    pass
+
+def fix_negative_values(dataframe):
+    pass
 
 def clean_incidence_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
 
+    # Fixing negative values
+    for column in ['new_confirmed', 'cumulative_confirmed', 'new_tested', 'cumulative_tested']:
+        dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
+        dataframe.loc[dataframe[column] < 0, column] = dataframe.loc[dataframe[column] < 0, column] * -1
+
     def process_group(group):
         sorted_group = group.sort_values('date')
-
-        # Fixing negative values # to do - ty się sypie na porównaniu algorytm - do naprawienia
-        for column in ['new_confirmed', 'cumulative_confirmed', 'new_tested', 'cumulative_tested']:
-            sorted_group.loc[sorted_group[column] < 0, column] = sorted_group.loc[sorted_group[column] < 0, column] * -1
 
         # Cleaning time series - repairing missing values
         """
@@ -53,8 +61,10 @@ def clean_incidence_data(dataframe):
 
         return sorted_group
 
-    result_df = dataframe.groupby('location_key').apply(process_group)
+    result_df = dataframe.groupby('location_key').apply(process_group, include_groups=False)
     result_df = result_df.reset_index(drop=True)
+
+    print(f"{BLUE}Cleaned COVID-19 incidents data{BASIC}")
 
     return result_df
 
@@ -84,7 +94,7 @@ def main():
     print(f"Number of records with empty fields in wikidata_id: {df1['wikidata_id'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in aggregation_level: {df1['aggregation_level'].isnull().sum().sum()}")
 
-    df1 = clean_countries_data(df1)
+    #df1 = clean_countries_data(df1)
 
     print(f"Number of records with empty fields: {df1.isnull().sum().sum()}")
     print(f"Number of records with empty fields in iso_3166_1_alpha_3: {df1['iso_3166_1_alpha_3'].isnull().sum().sum()}")
