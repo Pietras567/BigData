@@ -378,7 +378,9 @@ def main():
     # iso_3166_1_alpha_3, country_name
     print(f"\n\n{GREEN}Started extracting and cleaning countries data{BASIC}")
 
-    query = ('select location_key, date, iso_3166_1_alpha_3, wikidata_id, aggregation_level, country_name from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, iso_3166_1_alpha_3, country_name '
+             'from bigquery-public-data.covid19_open_data.covid19_open_data '
+             'where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df1 = query_result.to_dataframe()
@@ -406,7 +408,9 @@ def main():
     # date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested
     print(f"\n\n{GREEN}Started extracting and cleaning COVID-19 incidents data{BASIC}")
 
-    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested '
+             'from bigquery-public-data.covid19_open_data.covid19_open_data '
+             'where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df2 = query_result.to_dataframe()
@@ -435,7 +439,9 @@ def main():
     # new_deceased, cumulative_deceased,
     print(f"\n\n{GREEN}Started extracting and cleaning human mortality data{BASIC}")
 
-    query = ('select location_key, date, new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, new_deceased, cumulative_deceased '
+             'from bigquery-public-data.covid19_open_data.covid19_open_data '
+             'where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df3 = query_result.to_dataframe()
@@ -458,7 +464,10 @@ def main():
     # new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered
     print(f"\n\n{GREEN}Started extracting and cleaning vaccination data{BASIC}")
 
-    query = ('select location_key, date, new_persons_vaccinated, cumulative_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_fully_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, new_persons_vaccinated, cumulative_persons_vaccinated, new_persons_fully_vaccinated, '
+             'cumulative_persons_fully_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered '
+             'from bigquery-public-data.covid19_open_data.covid19_open_data '
+             'where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df4 = query_result.to_dataframe()
@@ -489,7 +498,10 @@ def main():
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
     print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
-    query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, hospital_beds_per_1000, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, '
+             'hospital_beds_per_1000, nurses_per_1000, physicians_per_1000, health_expenditure_usd '
+             'from bigquery-public-data.covid19_open_data.covid19_open_data '
+             'where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df5 = query_result.to_dataframe()
@@ -531,8 +543,8 @@ def main():
     combined_df = combined_df.sort_values(by=['location_key', 'date'])
 
     # Filter and save each level directly to a file
-    for level in [0, 1, 2, 3]:
-        combined_df.query(f"aggregation_level == {level}").to_csv(f'exported/combined_level_{level}.csv', index=False)
+    #for level in [0, 1, 2, 3]:
+    #    combined_df.query(f"aggregation_level == {level}").to_csv(f'exported/combined_level_{level}.csv', index=False)
 
     # Saving the combined dataframe to a CSV file
     combined_df.to_csv('exported/combined.csv', index=False)
