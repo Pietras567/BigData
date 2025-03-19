@@ -1,4 +1,6 @@
 import os
+import time
+
 import pandas as pd
 from google.cloud import bigquery
 
@@ -143,11 +145,15 @@ def clean_incidence_data(dataframe):
 
     result_df = result_df.reset_index(drop=True)
 
+    print(f"{BLUE}Cleaned COVID-19 confirmed incidents data{BASIC}")
+
     result_df = result_df.groupby('location_key').apply(process_group, new_column_name='new_tested',
                                                                        cumulative_column_name='cumulative_tested',
                                                                        include_groups=True)
 
     result_df = result_df.reset_index(drop=True)
+
+    print(f"{BLUE}Cleaned COVID-19 tests data{BASIC}")
 
     print(f"{BLUE}Cleaned COVID-19 incidents data{BASIC}")
 
@@ -156,20 +162,62 @@ def clean_incidence_data(dataframe):
 def clean_mortality_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
 
-    return dataframe
+    #dataframe = fix_negative_values(dataframe)
+
+    result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_deceased',
+                                                        cumulative_column_name='cumulative_deceased',
+                                                        include_groups=True)
+
+    result_df = result_df.reset_index(drop=True)
+
+    print(f"{BLUE}Cleaned COVID-19 mortality data{BASIC}")
+
+    return result_df
 
 def clean_vaccination_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
 
-    return dataframe
+    #dataframe = fix_negative_values(dataframe)
+
+    result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_persons_vaccinated',
+                                                        cumulative_column_name='cumulative_persons_vaccinated',
+                                                        include_groups=True)
+
+    result_df = result_df.reset_index(drop=True)
+
+    print(f"{BLUE}Cleaned persons vaccinated data{BASIC}")
+
+    result_df = result_df.groupby('location_key').apply(process_group, new_column_name='new_persons_fully_vaccinated',
+                                                        cumulative_column_name='cumulative_persons_fully_vaccinated',
+                                                        include_groups=True)
+
+    result_df = result_df.reset_index(drop=True)
+
+    print(f"{BLUE}Cleaned persons fully vaccinated data{BASIC}")
+
+    result_df = result_df.groupby('location_key').apply(process_group, new_column_name='new_vaccine_doses_administered',
+                                                        cumulative_column_name='cumulative_vaccine_doses_administered',
+                                                        include_groups=True)
+
+    result_df = result_df.reset_index(drop=True)
+
+    print(f"{BLUE}Cleaned vaccine doses administered data{BASIC}")
+
+    print(f"{BLUE}Cleaned vaccination data{BASIC}")
+
+    return result_df
 
 def clean_health_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
+
+    print(f"{BLUE}Cleaned health indicators data{BASIC}")
 
     return dataframe
 
 
 def main():
+    start_time = time.time()
+
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-2ab5d0de9937.json" # path to API key
     client = bigquery.Client()
 
@@ -262,15 +310,16 @@ def main():
     # new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered
     print(f"\n\n{GREEN}Started extracting and cleaning vaccination data{BASIC}")
 
-    query = ('select location_key, date, new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, new_persons_vaccinated, cumulative_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_fully_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df4 = query_result.to_dataframe()
 
     print(f"Number of records with empty fields: {df4.isnull().sum().sum()}")
     print(f"Number of records with empty fields in new_persons_vaccinated: {df4['new_persons_vaccinated'].isnull().sum().sum()}")
-    print(f"Number of records with empty fields in new_persons_fully_vaccinated: {df4['new_persons_fully_vaccinated'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_persons_vaccinated: {df4['cumulative_persons_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_persons_fully_vaccinated: {df4['new_persons_fully_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_persons_vaccinated: {df4['cumulative_persons_fully_vaccinated'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in new_vaccine_doses_administered: {df4['new_vaccine_doses_administered'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_vaccine_doses_administered: {df4['cumulative_vaccine_doses_administered'].isnull().sum().sum()}")
 
@@ -278,8 +327,9 @@ def main():
 
     print(f"Number of records with empty fields: {df4.isnull().sum().sum()}")
     print(f"Number of records with empty fields in new_persons_vaccinated: {df4['new_persons_vaccinated'].isnull().sum().sum()}")
-    print(f"Number of records with empty fields in new_persons_fully_vaccinated: {df4['new_persons_fully_vaccinated'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_persons_vaccinated: {df4['cumulative_persons_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_persons_fully_vaccinated: {df4['new_persons_fully_vaccinated'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_persons_vaccinated: {df4['cumulative_persons_fully_vaccinated'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in new_vaccine_doses_administered: {df4['new_vaccine_doses_administered'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_vaccine_doses_administered: {df4['cumulative_vaccine_doses_administered'].isnull().sum().sum()}")
 
@@ -340,6 +390,17 @@ def main():
     combined_df.to_csv('exported/combined.csv', index=False)
 
     print(f"{GREEN}Ended merging data frames and saved to exported/combined.csv{BASIC}")
+
+    end_time = time.time()
+
+    time_in_seconds = end_time - start_time
+
+    # Conversion to desired format
+    minutes = int(time_in_seconds // 60)
+    seconds = int(time_in_seconds % 60)
+
+    # Time in format MM:SS
+    print(f"Execution time: {minutes:02d}:{seconds:02d}")
 
 
 if __name__ == '__main__':
