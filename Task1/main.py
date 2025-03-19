@@ -53,49 +53,49 @@ def process_group(group, new_column_name, cumulative_column_name):
     # Implementacja algorytmu dla 'new_confirmed', 'cumulative_confirmed'
 
     # Sprawdzenie czy wszystkie wartości są puste (punkt 4)
-    if sorted_group['new_confirmed'].isna().all() and sorted_group['cumulative_confirmed'].isna().all():
-        sorted_group['new_confirmed'] = 0
-        sorted_group['cumulative_confirmed'] = 0
+    if sorted_group[new_column_name].isna().all() and sorted_group[cumulative_column_name].isna().all():
+        sorted_group[new_column_name] = 0
+        sorted_group[cumulative_column_name] = 0
         return sorted_group
 
     # Obsługa pierwszego wiersza (punkt 5)
-    if pd.isna(sorted_group['new_confirmed'].iloc[0]) and pd.isna(sorted_group['cumulative_confirmed'].iloc[0]):
-        sorted_group['new_confirmed'].iloc[0] = 0
-        sorted_group['cumulative_confirmed'].iloc[0] = 0
-    elif pd.isna(sorted_group['new_confirmed'].iloc[0]):
-        sorted_group['new_confirmed'].iloc[0] = sorted_group['cumulative_confirmed'].iloc[0]
-    elif pd.isna(sorted_group['cumulative_confirmed'].iloc[0]):
-        sorted_group['cumulative_confirmed'].iloc[0] = sorted_group['new_confirmed'].iloc[0]
+    if pd.isna(sorted_group[new_column_name].iloc[0]) and pd.isna(sorted_group[cumulative_column_name].iloc[0]):
+        sorted_group[new_column_name].iloc[0] = 0
+        sorted_group[cumulative_column_name].iloc[0] = 0
+    elif pd.isna(sorted_group[new_column_name].iloc[0]):
+        sorted_group[new_column_name].iloc[0] = sorted_group[cumulative_column_name].iloc[0]
+    elif pd.isna(sorted_group[cumulative_column_name].iloc[0]):
+        sorted_group[cumulative_column_name].iloc[0] = sorted_group[new_column_name].iloc[0]
 
     # Iteracyjne przetwarzanie pozostałych wierszy
-    prev_cumulative = sorted_group['cumulative_confirmed'].iloc[0]
+    prev_cumulative = sorted_group[cumulative_column_name].iloc[0]
     for i in range(1, len(sorted_group)):
-        current_new = sorted_group['new_confirmed'].iloc[i]
-        current_cumulative = sorted_group['cumulative_confirmed'].iloc[i]
+        current_new = sorted_group[new_column_name].iloc[i]
+        current_cumulative = sorted_group[cumulative_column_name].iloc[i]
 
         # Punkt 1: Puste new, niepuste cumulative
         if pd.isna(current_new) and not pd.isna(current_cumulative):
-            sorted_group['new_confirmed'].iloc[i] = current_cumulative - prev_cumulative
+            sorted_group[new_column_name].iloc[i] = current_cumulative - prev_cumulative
 
         # Punkt 2 i 3: Puste cumulative
         elif pd.isna(current_cumulative):
             # Szukanie następnej niepustej wartości cumulative
             next_non_na_index = None
             for j in range(i + 1, len(sorted_group)):
-                if not pd.isna(sorted_group['cumulative_confirmed'].iloc[j]):
+                if not pd.isna(sorted_group[cumulative_column_name].iloc[j]):
                     next_non_na_index = j
                     break
 
             if next_non_na_index is not None:
-                next_cumulative = sorted_group['cumulative_confirmed'].iloc[next_non_na_index]
+                next_cumulative = sorted_group[cumulative_column_name].iloc[next_non_na_index]
                 total_diff = next_cumulative - prev_cumulative
 
                 # Odejmowanie wszystkich niepustych wartości 'new' w zakresie
                 non_na_new_sum = 0
                 empty_new_count = 0
                 for j in range(i, next_non_na_index):
-                    if not pd.isna(sorted_group['new_confirmed'].iloc[j]):
-                        non_na_new_sum += sorted_group['new_confirmed'].iloc[j]
+                    if not pd.isna(sorted_group[new_column_name].iloc[j]):
+                        non_na_new_sum += sorted_group[new_column_name].iloc[j]
                     else:
                         empty_new_count += 1
 
@@ -105,22 +105,22 @@ def process_group(group, new_column_name, cumulative_column_name):
                 if empty_new_count > 0:
                     value_per_empty = round(remaining_diff / empty_new_count)
                     for j in range(i, next_non_na_index):
-                        if pd.isna(sorted_group['new_confirmed'].iloc[j]):
-                            sorted_group['new_confirmed'].iloc[j] = value_per_empty
+                        if pd.isna(sorted_group[new_column_name].iloc[j]):
+                            sorted_group[new_column_name].iloc[j] = value_per_empty
 
                 # Uzupełnianie bieżącego pola cumulative
-                if not pd.isna(sorted_group['new_confirmed'].iloc[i]):
-                    sorted_group['cumulative_confirmed'].iloc[i] = prev_cumulative + sorted_group['new_confirmed'].iloc[
+                if not pd.isna(sorted_group[new_column_name].iloc[i]):
+                    sorted_group[cumulative_column_name].iloc[i] = prev_cumulative + sorted_group[new_column_name].iloc[
                         i]
             else:
                 # Punkt 6: Puste 'new' i 'cumulative', oraz brak przyszłych niepustych 'cumulative'
                 if pd.isna(current_new):
-                    sorted_group['new_confirmed'].iloc[i] = 0
-                sorted_group['cumulative_confirmed'].iloc[i] = prev_cumulative + sorted_group['new_confirmed'].iloc[i]
+                    sorted_group[new_column_name].iloc[i] = 0
+                sorted_group[cumulative_column_name].iloc[i] = prev_cumulative + sorted_group[new_column_name].iloc[i]
 
         # Aktualizacja prev_cumulative dla następnej iteracji
-        if not pd.isna(sorted_group['cumulative_confirmed'].iloc[i]):
-            prev_cumulative = sorted_group['cumulative_confirmed'].iloc[i]
+        if not pd.isna(sorted_group[cumulative_column_name].iloc[i]):
+            prev_cumulative = sorted_group[cumulative_column_name].iloc[i]
 
     return sorted_group
 
@@ -137,7 +137,16 @@ def clean_incidence_data(dataframe):
 
     dataframe = fix_negative_values(dataframe)
 
-    result_df = dataframe.groupby('location_key').apply(process_group, include_groups=True)
+    result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_confirmed',
+                                                                       cumulative_column_name='cumulative_confirmed',
+                                                                       include_groups=True)
+
+    result_df = result_df.reset_index(drop=True)
+
+    result_df = result_df.groupby('location_key').apply(process_group, new_column_name='new_tested',
+                                                                       cumulative_column_name='cumulative_tested',
+                                                                       include_groups=True)
+
     result_df = result_df.reset_index(drop=True)
 
     print(f"{BLUE}Cleaned COVID-19 incidents data{BASIC}")
