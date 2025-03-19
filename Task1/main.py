@@ -9,6 +9,8 @@ BASIC = '\033[0m'
 
 
 def clean_countries_data(dataframe):
+    dataframe['date'] = pd.to_datetime(dataframe['date'])
+
     # Drop "Netherlands Antilles"
     dataframe = dataframe[dataframe['country_name'] != 'Netherlands Antilles']
     print(f"{BLUE}Dropped rows with Netherlands Antilles"
@@ -56,12 +58,86 @@ def clean_incidence_data(dataframe):
 
         5. Jeśli pierwsza wartość 'new' i 'cumulative' jest pusta, wstaw w obu kolumnach zera. Jeśli tylko jedna
            z nich jest pusta, należy ją uzupełnić wartością drugiej.
+           
+        6. Jeśli aktualne pole new jest puste oraz aktualne pole cumulative jest również puste, a w przyszłości 
+        nie znajduje się już jakiekolwiek pole cumulative posiadające wartość, to do pola new należy wstawić wartość 0, 
+        a do aktualnego pola cumulative wartość z poprzedniego cumulative.
         """
         # to do - algorytm powyżej
+        # Implementacja algorytmu dla 'new_confirmed', 'cumulative_confirmed'
+
+        # Sprawdzenie czy wszystkie wartości są puste (punkt 4)
+        if sorted_group['new_confirmed'].isna().all() and sorted_group['cumulative_confirmed'].isna().all():
+            sorted_group['new_confirmed'] = 0
+            sorted_group['cumulative_confirmed'] = 0
+            return sorted_group
+
+        # Obsługa pierwszego wiersza (punkt 5)
+        if pd.isna(sorted_group['new_confirmed'].iloc[0]) and pd.isna(sorted_group['cumulative_confirmed'].iloc[0]):
+            sorted_group['new_confirmed'].iloc[0] = 0
+            sorted_group['cumulative_confirmed'].iloc[0] = 0
+        elif pd.isna(sorted_group['new_confirmed'].iloc[0]):
+            sorted_group['new_confirmed'].iloc[0] = sorted_group['cumulative_confirmed'].iloc[0]
+        elif pd.isna(sorted_group['cumulative_confirmed'].iloc[0]):
+            sorted_group['cumulative_confirmed'].iloc[0] = sorted_group['new_confirmed'].iloc[0]
+
+        # Iteracyjne przetwarzanie pozostałych wierszy
+        prev_cumulative = sorted_group['cumulative_confirmed'].iloc[0]
+        for i in range(1, len(sorted_group)):
+            current_new = sorted_group['new_confirmed'].iloc[i]
+            current_cumulative = sorted_group['cumulative_confirmed'].iloc[i]
+
+            # Punkt 1: Puste new, niepuste cumulative
+            if pd.isna(current_new) and not pd.isna(current_cumulative):
+                sorted_group['new_confirmed'].iloc[i] = current_cumulative - prev_cumulative
+
+            # Punkt 2 i 3: Puste cumulative
+            elif pd.isna(current_cumulative):
+                # Szukanie następnej niepustej wartości cumulative
+                next_non_na_index = None
+                for j in range(i + 1, len(sorted_group)):
+                    if not pd.isna(sorted_group['cumulative_confirmed'].iloc[j]):
+                        next_non_na_index = j
+                        break
+
+                if next_non_na_index is not None:
+                    next_cumulative = sorted_group['cumulative_confirmed'].iloc[next_non_na_index]
+                    total_diff = next_cumulative - prev_cumulative
+
+                    # Odejmowanie wszystkich niepustych wartości 'new' w zakresie
+                    non_na_new_sum = 0
+                    empty_new_count = 0
+                    for j in range(i, next_non_na_index):
+                        if not pd.isna(sorted_group['new_confirmed'].iloc[j]):
+                            non_na_new_sum += sorted_group['new_confirmed'].iloc[j]
+                        else:
+                            empty_new_count += 1
+
+                    remaining_diff = total_diff - non_na_new_sum
+
+                    # Jeśli są puste pola 'new', wypełniamy je równomiernie
+                    if empty_new_count > 0:
+                        value_per_empty = round(remaining_diff / empty_new_count)
+                        for j in range(i, next_non_na_index):
+                            if pd.isna(sorted_group['new_confirmed'].iloc[j]):
+                                sorted_group['new_confirmed'].iloc[j] = value_per_empty
+
+                    # Uzupełnianie bieżącego pola cumulative
+                    if not pd.isna(sorted_group['new_confirmed'].iloc[i]):
+                        sorted_group['cumulative_confirmed'].iloc[i] = prev_cumulative + sorted_group['new_confirmed'].iloc[i]
+                else:
+                    # Punkt 6: Puste 'new' i 'cumulative', oraz brak przyszłych niepustych 'cumulative'
+                    if pd.isna(current_new):
+                        sorted_group['new_confirmed'].iloc[i] = 0
+                    sorted_group['cumulative_confirmed'].iloc[i] = prev_cumulative + sorted_group['new_confirmed'].iloc[i]
+
+            # Aktualizacja prev_cumulative dla następnej iteracji
+            if not pd.isna(sorted_group['cumulative_confirmed'].iloc[i]):
+                prev_cumulative = sorted_group['cumulative_confirmed'].iloc[i]
 
         return sorted_group
 
-    result_df = dataframe.groupby('location_key').apply(process_group, include_groups=False)
+    result_df = dataframe.groupby('location_key').apply(process_group, include_groups=True)
     result_df = result_df.reset_index(drop=True)
 
     print(f"{BLUE}Cleaned COVID-19 incidents data{BASIC}")
@@ -69,18 +145,18 @@ def clean_incidence_data(dataframe):
     return result_df
 
 def clean_mortality_data(dataframe):
-
+    dataframe['date'] = pd.to_datetime(dataframe['date'])
 
     return dataframe
 
 def clean_vaccination_data(dataframe):
-
+    dataframe['date'] = pd.to_datetime(dataframe['date'])
 
     return dataframe
 
 def clean_health_data(dataframe):
+    dataframe['date'] = pd.to_datetime(dataframe['date'])
 
-    
     return dataframe
 
 
@@ -97,7 +173,7 @@ def main():
     # iso_3166_1_alpha_3, country_name
     print(f"\n\n{GREEN}Started extracting and cleaning countries data{BASIC}")
 
-    query = ('select location_key, date, iso_3166_1_alpha_3, wikidata_id, aggregation_level, country_name from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, iso_3166_1_alpha_3, wikidata_id, aggregation_level, country_name from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df1 = query_result.to_dataframe()
@@ -109,7 +185,7 @@ def main():
     print(f"Number of records with empty fields in wikidata_id: {df1['wikidata_id'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in aggregation_level: {df1['aggregation_level'].isnull().sum().sum()}")
 
-    #df1 = clean_countries_data(df1)
+    df1 = clean_countries_data(df1)
 
     print(f"Number of records with empty fields: {df1.isnull().sum().sum()}")
     print(f"Number of records with empty fields in iso_3166_1_alpha_3: {df1['iso_3166_1_alpha_3'].isnull().sum().sum()}")
@@ -125,7 +201,7 @@ def main():
     # date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested
     print(f"\n\n{GREEN}Started extracting and cleaning COVID-19 incidents data{BASIC}")
 
-    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df2 = query_result.to_dataframe()
@@ -154,7 +230,7 @@ def main():
     # new_deceased, cumulative_deceased,
     print(f"\n\n{GREEN}Started extracting and cleaning human mortality data{BASIC}")
 
-    query = ('select location_key, date, new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, new_deceased, cumulative_deceased from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df3 = query_result.to_dataframe()
@@ -177,7 +253,7 @@ def main():
     # new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered
     print(f"\n\n{GREEN}Started extracting and cleaning vaccination data{BASIC}")
 
-    query = ('select location_key, date, new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, new_persons_vaccinated, new_persons_fully_vaccinated, cumulative_persons_vaccinated, new_vaccine_doses_administered, cumulative_vaccine_doses_administered from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df4 = query_result.to_dataframe()
@@ -206,7 +282,7 @@ def main():
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
     print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
-    query = ('select location_key, date, smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data')
+    query = ('select location_key, date, smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df5 = query_result.to_dataframe()
