@@ -22,7 +22,7 @@ def clean_countries_data(dataframe):
 
 def process_group(group, new_column_name, cumulative_column_name):
     sorted_group = group.sort_values('date')
-
+    return sorted_group
     # Cleaning time series - repairing missing values
     """
     Algorytm przetwarza wiersze w obrębie każdej grupy w następujący sposób:
@@ -209,6 +209,63 @@ def clean_vaccination_data(dataframe):
 
 def clean_health_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
+    
+    df_doctors = pd.read_csv('data/data_doctors.csv')
+    df_nurses = pd.read_csv('data/data_nurses.csv')
+    df_smoking = pd.read_csv('data/data_smoking.csv', sep=';')
+
+    for index, row in dataframe.iterrows():
+        if (pd.isna(row['physicians_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors['SpatialDimValueCode'].values):
+            country_doctors = df_doctors.loc[df_doctors['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Znajdź rok najbliższy do roku w aktualnym wierszu
+            country_doctors['year_diff'] = abs(country_doctors['Period'] - row['date'].year)
+            closest_match = country_doctors.loc[country_doctors['year_diff'].idxmin()]
+
+            dataframe.loc[index, 'physicians_per_1000'] = closest_match['Value'] / 10
+        else:
+            dataframe.loc[index, 'physicians_per_1000'] = 0
+
+        if (pd.isna(row['nurses_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_nurses['SpatialDimValueCode'].values):
+            country_nurses = df_nurses.loc[df_nurses['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Znajdź rok najbliższy do roku w aktualnym wierszu
+            country_nurses['year_diff'] = abs(country_nurses['Period'] - row['date'].year)
+            closest_match = country_nurses.loc[country_nurses['year_diff'].idxmin()]
+
+            dataframe.loc[index, 'nurses_per_1000'] = closest_match['Value'] / 10
+        else:
+            dataframe.loc[index, 'nurses_per_1000'] = 0
+
+        if (pd.isna(row['smoking_prevalence'])) & (row['iso_3166_1_alpha_3'] in df_smoking['Country Code'].values):
+            country_smoking = df_smoking.loc[df_smoking['Country Code'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            year_columns = [col for col in country_smoking.columns if col.isdigit()]
+
+            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            numeric_years = [int(y) for y in year_columns]
+
+            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            non_empty_years = {}
+            for year in numeric_years:
+                val = country_smoking[str(year)].values[0]
+                if not pd.isna(val):
+                    non_empty_years[year] = val
+
+            if len(non_empty_years) > 0:
+                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                target_year = row['date'].year
+                year_diffs = {year: abs(year - target_year) for year in non_empty_years}
+                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+
+                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                closest_value = non_empty_years[closest_year]
+
+                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+
+                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                dataframe.loc[index, 'smoking_prevalence'] = closest_value
 
     print(f"{BLUE}Cleaned health indicators data{BASIC}")
 
@@ -341,7 +398,7 @@ def main():
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
     print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
-    query = ('select location_key, date, smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df5 = query_result.to_dataframe()
