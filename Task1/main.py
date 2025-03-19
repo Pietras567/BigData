@@ -62,8 +62,8 @@ def process_group(group, new_column_name, cumulative_column_name):
 
     # Obsługa pierwszego wiersza (punkt 5)
     if pd.isna(sorted_group[new_column_name].iloc[0]) and pd.isna(sorted_group[cumulative_column_name].iloc[0]):
-        sorted_group[new_column_name].iloc[0] = 0
-        sorted_group[cumulative_column_name].iloc[0] = 0
+        sorted_group.loc[sorted_group.index[0], new_column_name] = 0
+        sorted_group.loc[sorted_group.index[0], cumulative_column_name] = 0
     elif pd.isna(sorted_group[new_column_name].iloc[0]):
         sorted_group[new_column_name].iloc[0] = sorted_group[cumulative_column_name].iloc[0]
     elif pd.isna(sorted_group[cumulative_column_name].iloc[0]):
@@ -77,7 +77,7 @@ def process_group(group, new_column_name, cumulative_column_name):
 
         # Punkt 1: Puste new, niepuste cumulative
         if pd.isna(current_new) and not pd.isna(current_cumulative):
-            sorted_group[new_column_name].iloc[i] = current_cumulative - prev_cumulative
+            sorted_group.loc[sorted_group.index[i], new_column_name] = current_cumulative - prev_cumulative
 
         # Punkt 2 i 3: Puste cumulative
         elif pd.isna(current_cumulative):
@@ -108,17 +108,17 @@ def process_group(group, new_column_name, cumulative_column_name):
                     value_per_empty = round(remaining_diff / empty_new_count)
                     for j in range(i, next_non_na_index):
                         if pd.isna(sorted_group[new_column_name].iloc[j]):
-                            sorted_group[new_column_name].iloc[j] = value_per_empty
+                            sorted_group.loc[sorted_group.index[j], new_column_name] = value_per_empty
 
                 # Uzupełnianie bieżącego pola cumulative
                 if not pd.isna(sorted_group[new_column_name].iloc[i]):
-                    sorted_group[cumulative_column_name].iloc[i] = prev_cumulative + sorted_group[new_column_name].iloc[
-                        i]
+                    sorted_group.loc[sorted_group.index[i], cumulative_column_name] = prev_cumulative + sorted_group.loc[sorted_group.index[i], new_column_name]
             else:
                 # Punkt 6: Puste 'new' i 'cumulative', oraz brak przyszłych niepustych 'cumulative'
                 if pd.isna(current_new):
-                    sorted_group[new_column_name].iloc[i] = 0
-                sorted_group[cumulative_column_name].iloc[i] = prev_cumulative + sorted_group[new_column_name].iloc[i]
+                    sorted_group.loc[sorted_group.index[i], new_column_name] = 0
+                sorted_group.loc[sorted_group.index[i], cumulative_column_name] = (
+                        prev_cumulative + sorted_group.loc[sorted_group.index[i], new_column_name])
 
         # Aktualizacja prev_cumulative dla następnej iteracji
         if not pd.isna(sorted_group[cumulative_column_name].iloc[i]):
