@@ -22,15 +22,17 @@ def process_group(group):
     pass
 
 def fix_negative_values(dataframe):
-    pass
-
-def clean_incidence_data(dataframe):
-    dataframe['date'] = pd.to_datetime(dataframe['date'])
-
     # Fixing negative values
     for column in ['new_confirmed', 'cumulative_confirmed', 'new_tested', 'cumulative_tested']:
         dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
         dataframe.loc[dataframe[column] < 0, column] = dataframe.loc[dataframe[column] < 0, column] * -1
+
+    return dataframe
+
+def clean_incidence_data(dataframe):
+    dataframe['date'] = pd.to_datetime(dataframe['date'])
+
+    dataframe = fix_negative_values(dataframe)
 
     def process_group(group):
         sorted_group = group.sort_values('date')
