@@ -209,10 +209,11 @@ def clean_vaccination_data(dataframe):
 
 def clean_health_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
-    
+
     df_doctors = pd.read_csv('data/data_doctors.csv')
     df_nurses = pd.read_csv('data/data_nurses.csv')
     df_smoking = pd.read_csv('data/data_smoking.csv', sep=';')
+    df_diabetes = pd.read_csv('data/data_diabetes2.csv', sep=';')
 
     for index, row in dataframe.iterrows():
         if (pd.isna(row['physicians_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors['SpatialDimValueCode'].values):
@@ -266,6 +267,36 @@ def clean_health_data(dataframe):
 
                 # Przypisz do 'smoking_prevalence' w głównym dataframe
                 dataframe.loc[index, 'smoking_prevalence'] = closest_value
+
+        if (pd.isna(row['diabetes_prevalence'])) & (row['iso_3166_1_alpha_3'] in df_smoking['Country Code'].values):
+            country_diabetes = df_diabetes.loc[df_diabetes['Country Code'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            year_columns = [col for col in country_diabetes.columns if col.isdigit()]
+
+            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            numeric_years = [int(y) for y in year_columns]
+
+            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            non_empty_years = {}
+            for year in numeric_years:
+                val = country_diabetes[str(year)].values[0]
+                if not pd.isna(val):
+                    non_empty_years[year] = val
+
+            if len(non_empty_years) > 0:
+                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                target_year = row['date'].year
+                year_diffs = {year: abs(year - target_year) for year in non_empty_years}
+                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+
+                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                closest_value = non_empty_years[closest_year]
+
+                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+
+                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                dataframe.loc[index, 'diabetes_prevalence'] = closest_value
 
     print(f"{BLUE}Cleaned health indicators data{BASIC}")
 
@@ -398,7 +429,7 @@ def main():
     # smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd
     print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
-    query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, infant_mortality_rate, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
+    query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, hospital_beds_per_1000, nurses_per_1000, physicians_per_1000, health_expenditure_usd from bigquery-public-data.covid19_open_data.covid19_open_data where aggregation_level = 0')
     query_job = client.query(query)
     query_result = query_job.result()
     df5 = query_result.to_dataframe()
