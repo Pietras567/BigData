@@ -1,6 +1,7 @@
 import os
 import time
 
+import numpy as np
 import pandas as pd
 from google.cloud import bigquery
 
@@ -50,9 +51,11 @@ def process_group(group, new_column_name, cumulative_column_name):
     6. Jeśli aktualne pole new jest puste oraz aktualne pole cumulative jest również puste, a w przyszłości 
     nie znajduje się już jakiekolwiek pole cumulative posiadające wartość, to do pola new należy wstawić wartość 0, 
     a do aktualnego pola cumulative wartość z poprzedniego cumulative.
+    
+    7. Jeśli aktualne pole new nie jest puste, ale aktualne pole cumulative jest puste, 
+    uzupełnij je o sumę wartości poprzedniego pola cumulative oraz aktualnego pola new.
     """
-    # to do - algorytm powyżej
-    # Implementacja algorytmu dla 'new_confirmed', 'cumulative_confirmed'
+    # Implementacja algorytmu powyżej dla wskazanych kolumn new oraz cumulative
 
     # Sprawdzenie czy wszystkie wartości są puste (punkt 4)
     if sorted_group[new_column_name].isna().all() and sorted_group[cumulative_column_name].isna().all():
@@ -78,6 +81,10 @@ def process_group(group, new_column_name, cumulative_column_name):
         # Punkt 1: Puste new, niepuste cumulative
         if pd.isna(current_new) and not pd.isna(current_cumulative):
             sorted_group.loc[sorted_group.index[i], new_column_name] = current_cumulative - prev_cumulative
+
+        # Punkt 7: Niepuste new, puste cumulative
+        elif not pd.isna(current_new) and pd.isna(current_cumulative):
+            sorted_group.loc[sorted_group.index[i], cumulative_column_name] = prev_cumulative + current_new
 
         # Punkt 2 i 3: Puste cumulative
         elif pd.isna(current_cumulative):
@@ -211,7 +218,7 @@ def clean_health_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
 
     df_doctors = pd.read_csv('data/data_doctors.csv')
-    df_doctors2 = pd.read_csv('data/data_doctors2.csv', sep=";")
+    df_doctors2 = pd.read_csv('data/data_doctors2.csv')
     df_nurses = pd.read_csv('data/data_nurses.csv')
     df_nurses2 = pd.read_csv('data/data_nurses2.csv', sep=";")
     df_smoking = pd.read_csv('data/data_smoking.csv', sep=';')
@@ -262,7 +269,7 @@ def clean_health_data(dataframe):
 
                 closest_value = non_empty_years[closest_year]
 
-                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+                #closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
                 dataframe.loc[index, 'physicians_per_1000'] = closest_value
             else:
@@ -372,7 +379,7 @@ def clean_health_data(dataframe):
                 # Pobierz wartość z dataframe'u dla tego najbliższego roku
                 closest_value = non_empty_years[closest_year]
 
-                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+                #closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
                 # Przypisz do 'smoking_prevalence' w głównym dataframe
                 dataframe.loc[index, 'diabetes_prevalence'] = closest_value
@@ -408,7 +415,7 @@ def clean_health_data(dataframe):
 
                 closest_value = non_empty_years[closest_year]
 
-                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+                #closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
                 dataframe.loc[index, 'diabetes_prevalence'] = closest_value
             else:
@@ -714,10 +721,12 @@ def main():
     combined_df.to_csv('exported/combined.csv', index=False)
 
     # Dla każdej kolumny wyświetl wartości ujemne
-    for column in combined_df.columns:
-        negative_values = combined_df[combined_df[column] < 0]
-        if not negative_values.empty:
-            print(f"\nNegative values in column {column}: {negative_values[column]}")
+    for column in combined_df.select_dtypes(include=[np.number]).columns:
+        # Zliczanie wartości ujemnych
+        negative_count = (combined_df[column] < 0).sum()
+
+        if negative_count > 0:
+            print(f"Column '{column}' has {negative_count} negative values.")
 
     print(f"{GREEN}Ended merging data frames and saved to exported/combined.csv{BASIC}")
 
