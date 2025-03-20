@@ -389,8 +389,8 @@ def main():
     print(f"Number of records with empty fields in iso_3166_1_alpha_3: {df1['iso_3166_1_alpha_3'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in country_name: {df1['country_name'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in location_key: {df1['location_key'].isnull().sum().sum()}")
-    print(f"Number of records with empty fields in wikidata_id: {df1['wikidata_id'].isnull().sum().sum()}")
-    print(f"Number of records with empty fields in aggregation_level: {df1['aggregation_level'].isnull().sum().sum()}")
+#    print(f"Number of records with empty fields in wikidata_id: {df1['wikidata_id'].isnull().sum().sum()}")
+#    print(f"Number of records with empty fields in aggregation_level: {df1['aggregation_level'].isnull().sum().sum()}")
 
     df1 = clean_countries_data(df1)
 
@@ -398,8 +398,8 @@ def main():
     print(f"Number of records with empty fields in iso_3166_1_alpha_3: {df1['iso_3166_1_alpha_3'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in country_name: {df1['country_name'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in location_key: {df1['location_key'].isnull().sum().sum()}")
-    print(f"Number of records with empty fields in wikidata_id: {df1['wikidata_id'].isnull().sum().sum()}")
-    print(f"Number of records with empty fields in aggregation_level: {df1['aggregation_level'].isnull().sum().sum()}")
+#    print(f"Number of records with empty fields in wikidata_id: {df1['wikidata_id'].isnull().sum().sum()}")
+#    print(f"Number of records with empty fields in aggregation_level: {df1['aggregation_level'].isnull().sum().sum()}")
 
     df1.to_csv('exported/countries.csv', index=False)
     print(f"{GREEN}Ended extracting and cleaning countries data{BASIC}")
@@ -536,9 +536,32 @@ def main():
     combined_df = df1.merge(df2, on=["location_key", "date"], how="inner")
     combined_df = combined_df.merge(df3, on=["location_key", "date"], how="inner")
     combined_df = combined_df.merge(df4, on=["location_key", "date"], how="inner")
-    combined_df = combined_df.merge(df5, on=["location_key", "date"], how="inner")
+    combined_df = combined_df.merge(df5, on=["location_key", "date"], how="inner", suffixes=('', '_from_right'))
 
-    #combined_df = combined_df[combined_df['aggregation_level'] == 0]
+    # 6 Combine countries data to COVID-19 data
+    print(f"\n\n{GREEN}Started merging countries data frames{BASIC}")
+
+    df_gdp = pd.read_csv('data/gdp.csv')
+    #print(max(df_gdp['Year']))
+    #print(min(df_gdp['Year']))
+    #print(df_gdp['Year'].value_counts())
+    #print(df_gdp['Country Code'].nunique())
+    #df_gdp = df_gdp[df_gdp['Year'] == 2016]
+    #print(df_gdp['Value'].isnull().sum().sum())
+
+    # Sortujemy dane według kolumny 'Year'
+    df_gdp = df_gdp.sort_values(by='Year')
+
+    # Grupujemy po Country Code i bierzemy ostatni wiersz (maksymalny rok)
+    df_gdp = df_gdp.groupby('Country Code', as_index=False).last()
+
+    df_gdp = df_gdp.rename(columns={'Value': 'GDP'})
+    df_gdp = df_gdp.drop(columns=['Country Name', 'Year'])
+    combined_df = combined_df.merge(df_gdp, left_on=["iso_3166_1_alpha_3"], right_on=['Country Code'], how="left")
+
+    print(f"{GREEN}Ended merging countries data frames{BASIC}")
+
+
     # Group by country and sort by date
     combined_df = combined_df.sort_values(by=['location_key', 'date'])
 
