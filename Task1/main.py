@@ -23,7 +23,7 @@ def clean_countries_data(dataframe):
 
 def process_group(group, new_column_name, cumulative_column_name):
     sorted_group = group.sort_values('date')
-    #return sorted_group
+
     # Cleaning time series - repairing missing values
     """
     Algorytm przetwarza wiersze w obrębie każdej grupy w następujący sposób:
@@ -55,15 +55,15 @@ def process_group(group, new_column_name, cumulative_column_name):
     7. Jeśli aktualne pole new nie jest puste, ale aktualne pole cumulative jest puste, 
     uzupełnij je o sumę wartości poprzedniego pola cumulative oraz aktualnego pola new.
     """
-    # Implementacja algorytmu powyżej dla wskazanych kolumn new oraz cumulative
+    # Implementation of the algorithm above for the indicated new and cumulative columns
 
-    # Sprawdzenie czy wszystkie wartości są puste (punkt 4)
+    # Check that all values are empty (point 4)
     if sorted_group[new_column_name].isna().all() and sorted_group[cumulative_column_name].isna().all():
         sorted_group[new_column_name] = 0
         sorted_group[cumulative_column_name] = 0
         return sorted_group
 
-    # Obsługa pierwszego wiersza (punkt 5)
+    # Handling of the first line (point 5)
     if pd.isna(sorted_group[new_column_name].iloc[0]) and pd.isna(sorted_group[cumulative_column_name].iloc[0]):
         sorted_group.loc[sorted_group.index[0], new_column_name] = 0
         sorted_group.loc[sorted_group.index[0], cumulative_column_name] = 0
@@ -72,23 +72,23 @@ def process_group(group, new_column_name, cumulative_column_name):
     elif pd.isna(sorted_group[cumulative_column_name].iloc[0]):
         sorted_group[cumulative_column_name].iloc[0] = sorted_group[new_column_name].iloc[0]
 
-    # Iteracyjne przetwarzanie pozostałych wierszy
+    # Iterative processing of the remaining rows
     prev_cumulative = sorted_group[cumulative_column_name].iloc[0]
     for i in range(1, len(sorted_group)):
         current_new = sorted_group[new_column_name].iloc[i]
         current_cumulative = sorted_group[cumulative_column_name].iloc[i]
 
-        # Punkt 1: Puste new, niepuste cumulative
+        # Point 1: Empty new, non-empty cumulative
         if pd.isna(current_new) and not pd.isna(current_cumulative):
             sorted_group.loc[sorted_group.index[i], new_column_name] = current_cumulative - prev_cumulative
 
-        # Punkt 7: Niepuste new, puste cumulative
+        # Point 7: Non-empty new, empty cumulative
         elif not pd.isna(current_new) and pd.isna(current_cumulative):
             sorted_group.loc[sorted_group.index[i], cumulative_column_name] = prev_cumulative + current_new
 
-        # Punkt 2 i 3: Puste cumulative
+        # Points 2 and 3: Empty cumulative
         elif pd.isna(current_cumulative):
-            # Szukanie następnej niepustej wartości cumulative
+            # Looking for the next non-empty cumulative value
             next_non_na_index = None
             for j in range(i + 1, len(sorted_group)):
                 if not pd.isna(sorted_group[cumulative_column_name].iloc[j]):
@@ -99,7 +99,7 @@ def process_group(group, new_column_name, cumulative_column_name):
                 next_cumulative = sorted_group[cumulative_column_name].iloc[next_non_na_index]
                 total_diff = next_cumulative - prev_cumulative
 
-                # Odejmowanie wszystkich niepustych wartości 'new' w zakresie
+                # Subtraction of all non-empty 'new' values in range
                 non_na_new_sum = 0
                 empty_new_count = 0
                 for j in range(i, next_non_na_index):
@@ -110,24 +110,24 @@ def process_group(group, new_column_name, cumulative_column_name):
 
                 remaining_diff = total_diff - non_na_new_sum
 
-                # Jeśli są puste pola 'new', wypełniamy je równomiernie
+                # If there are empty 'new' fields, we fill them evenly
                 if empty_new_count > 0:
                     value_per_empty = round(remaining_diff / empty_new_count)
                     for j in range(i, next_non_na_index):
                         if pd.isna(sorted_group[new_column_name].iloc[j]):
                             sorted_group.loc[sorted_group.index[j], new_column_name] = value_per_empty
 
-                # Uzupełnianie bieżącego pola cumulative
+                # Completing the current cumulative field
                 if not pd.isna(sorted_group[new_column_name].iloc[i]):
                     sorted_group.loc[sorted_group.index[i], cumulative_column_name] = prev_cumulative + sorted_group.loc[sorted_group.index[i], new_column_name]
             else:
-                # Punkt 6: Puste 'new' i 'cumulative', oraz brak przyszłych niepustych 'cumulative'
+                # Point 6: Empty 'new' and 'cumulative', and no future non-empty 'cumulative'
                 if pd.isna(current_new):
                     sorted_group.loc[sorted_group.index[i], new_column_name] = 0
                 sorted_group.loc[sorted_group.index[i], cumulative_column_name] = (
                         prev_cumulative + sorted_group.loc[sorted_group.index[i], new_column_name])
 
-        # Aktualizacja prev_cumulative dla następnej iteracji
+        # Update prev_cumulative for next iteration
         if not pd.isna(sorted_group[cumulative_column_name].iloc[i]):
             prev_cumulative = sorted_group[cumulative_column_name].iloc[i]
 
@@ -244,7 +244,7 @@ def clean_health_data(dataframe):
         if (pd.isna(row['physicians_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors['SpatialDimValueCode'].values):
             country_doctors = df_doctors.loc[df_doctors['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Znajdź rok najbliższy do roku w aktualnym wierszu
+            # Find the year closest to the year in the current row
             country_doctors['year_diff'] = abs(country_doctors['Period'] - row['date'].year)
             closest_match = country_doctors.loc[country_doctors['year_diff'].idxmin()]
 
@@ -253,7 +253,7 @@ def clean_health_data(dataframe):
         if (pd.isna(row['physicians_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors2['Country Code'].values):
             country_doctors2 = df_doctors2.loc[df_doctors2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Zbierz wszystkie kolumny, które reprezentują lata, pod postacią: "<rok> [YR<rok>]"
+            # Collect all columns that represent years, under the form: “<year> [YR<year>]”.
             year_columns = []
             for col in country_doctors2.columns:
                 if '[YR' in col:
@@ -262,21 +262,22 @@ def clean_health_data(dataframe):
                     if possible_year.isdigit():
                         year_columns.append(col)
 
-            # Tworzymy słownik: {rok_int: wartość}
+            # Create a dictionary: {year_int: value}
             non_empty_years = {}
             for col in year_columns:
-                # Odczytujemy rok (fragment przed spacją)
-                year_str = col.split()[0]  # "2015" z "2015 [YR2015]"
+                # Read the year (the part before the space)
+                year_str = col.split()[0]  # "2015" from "2015 [YR2015]"
                 val = country_doctors2[col].values[0]
+                val = pd.to_numeric(val, errors='coerce')
                 if (year_str.isdigit()) and not pd.isna(val):
                     non_empty_years[int(year_str)] = val
 
-            # Jeśli mamy jakiekolwiek niepuste wartości dla danego kraju
+            # If we have any non-empty values for a country
             if len(non_empty_years) > 0:
                 target_year = row['date'].year
                 year_diffs = {year: abs(year - target_year) for year in non_empty_years}
 
-                # Znajdź rok o najmniejszej różnicy od target_year
+                # Find the year with the smallest difference from target_year
                 closest_year = min(year_diffs, key=year_diffs.get)
 
                 closest_value = non_empty_years[closest_year]
@@ -292,7 +293,7 @@ def clean_health_data(dataframe):
         if (pd.isna(row['nurses_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_nurses['SpatialDimValueCode'].values):
             country_nurses = df_nurses.loc[df_nurses['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Znajdź rok najbliższy do roku w aktualnym wierszu
+            # Find the year closest to the year in the current row
             country_nurses['year_diff'] = abs(country_nurses['Period'] - row['date'].year)
             closest_match = country_nurses.loc[country_nurses['year_diff'].idxmin()]
 
@@ -301,13 +302,13 @@ def clean_health_data(dataframe):
         if (pd.isna(row['nurses_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors2['Country Code'].values):
             country_nurses2 = df_nurses2.loc[df_nurses2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            # Collect all columns that can be interpreted as years, e.g. “1960”, “1961”, .... “2023”
             year_columns = [col for col in country_nurses2.columns if col.isdigit()]
 
-            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            # Convert column names (string) to integers
             numeric_years = [int(y) for y in year_columns]
 
-            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            # Filter out only those years where the value is not NaN
             non_empty_years = {}
             for year in numeric_years:
                 val = country_nurses2[str(year)].values[0]
@@ -315,17 +316,17 @@ def clean_health_data(dataframe):
                     non_empty_years[year] = val
 
             if len(non_empty_years) > 0:
-                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                # Find the year whose difference from row['date'].year is the smallest
                 target_year = row['date'].year
                 year_diffs = {year: abs(year - target_year) for year in non_empty_years}
-                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+                closest_year = min(year_diffs, key=year_diffs.get)  # Choose the year that has the smallest difference
 
-                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                # Get the value from the dataframe for this upcoming year
                 closest_value = non_empty_years[closest_year]
 
                 closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
-                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                # Assign to 'nurses_per_1000' in the main dataframe
                 dataframe.loc[index, 'nurses_per_1000'] = closest_value
             else:
                 dataframe.loc[index, 'nurses_per_1000'] = 0
@@ -335,13 +336,13 @@ def clean_health_data(dataframe):
         if (pd.isna(row['smoking_prevalence'])) & (row['iso_3166_1_alpha_3'] in df_smoking['Country Code'].values):
             country_smoking = df_smoking.loc[df_smoking['Country Code'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            # Collect all columns that can be interpreted as years, e.g. “1960”, “1961”, .... “2023”
             year_columns = [col for col in country_smoking.columns if col.isdigit()]
 
-            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            # Convert column names (string) to integers
             numeric_years = [int(y) for y in year_columns]
 
-            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            # Filter out only those years where the value is not NaN
             non_empty_years = {}
             for year in numeric_years:
                 val = country_smoking[str(year)].values[0]
@@ -349,17 +350,17 @@ def clean_health_data(dataframe):
                     non_empty_years[year] = val
 
             if len(non_empty_years) > 0:
-                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                # Find the year whose difference from row['date'].year is the smallest
                 target_year = row['date'].year
                 year_diffs = {year: abs(year - target_year) for year in non_empty_years}
-                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+                closest_year = min(year_diffs, key=year_diffs.get)  # Choose the year that has the smallest difference
 
-                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                # Get the value from the dataframe for this upcoming year
                 closest_value = non_empty_years[closest_year]
 
                 closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
-                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                # Assign to 'smoking_prevalence' in the main dataframe
                 dataframe.loc[index, 'smoking_prevalence'] = closest_value
             else:
                 dataframe.loc[index, 'smoking_prevalence'] = 0
@@ -369,13 +370,13 @@ def clean_health_data(dataframe):
         if (pd.isna(row['diabetes_prevalence'])) & (row['iso_3166_1_alpha_3'] in df_diabetes['Country Code'].values):
             country_diabetes = df_diabetes.loc[df_diabetes['Country Code'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            # Collect all columns that can be interpreted as years, e.g. “1960”, “1961”, .... “2023”
             year_columns = [col for col in country_diabetes.columns if col.isdigit()]
 
-            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            # Convert column names (string) to integers
             numeric_years = [int(y) for y in year_columns]
 
-            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            # Filter out only those years where the value is not NaN
             non_empty_years = {}
             for year in numeric_years:
                 val = country_diabetes[str(year)].values[0]
@@ -383,23 +384,23 @@ def clean_health_data(dataframe):
                     non_empty_years[year] = val
 
             if len(non_empty_years) > 0:
-                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                # Find the year whose difference from row['date'].year is the smallest
                 target_year = row['date'].year
                 year_diffs = {year: abs(year - target_year) for year in non_empty_years}
-                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+                closest_year = min(year_diffs, key=year_diffs.get)  # Choose the year that has the smallest difference
 
-                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                # Get the value from the dataframe for this upcoming year
                 closest_value = non_empty_years[closest_year]
 
-                #closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
-                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                # Assign to 'diabetes_prevalence' in the main dataframe
                 dataframe.loc[index, 'diabetes_prevalence'] = closest_value
 
         if (pd.isna(row['diabetes_prevalence'])) & (row['iso_3166_1_alpha_3'] in df_diabetes2['Country Code'].values):
             country_diabetes = df_diabetes2.loc[df_diabetes2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Zbierz wszystkie kolumny, które reprezentują lata, pod postacią: "<rok> [YR<rok>]"
+            # Collect all columns that represent years, under the form: “<year> [YR<year>]”.
             year_columns = []
             for col in country_diabetes.columns:
                 if '[YR' in col:
@@ -408,21 +409,22 @@ def clean_health_data(dataframe):
                     if possible_year.isdigit():
                         year_columns.append(col)
 
-            # Tworzymy słownik: {rok_int: wartość}
+            # Create a dictionary: {year_int: value}
             non_empty_years = {}
             for col in year_columns:
-                # Odczytujemy rok (fragment przed spacją)
-                year_str = col.split()[0]  # "2015" z "2015 [YR2015]"
+                # Read the year (the part before the space)
+                year_str = col.split()[0]  # "2015" from "2015 [YR2015]"
                 val = country_diabetes[col].values[0]
+                val = pd.to_numeric(val, errors='coerce')
                 if (year_str.isdigit()) and not pd.isna(val):
                     non_empty_years[int(year_str)] = val
 
-            # Jeśli mamy jakiekolwiek niepuste wartości dla danego kraju
+            # If we have any non-empty values for a country
             if len(non_empty_years) > 0:
                 target_year = row['date'].year
                 year_diffs = {year: abs(year - target_year) for year in non_empty_years}
 
-                # Znajdź rok o najmniejszej różnicy od target_year
+                # Find the year with the smallest difference from target_year
                 closest_year = min(year_diffs, key=year_diffs.get)
 
                 closest_value = non_empty_years[closest_year]
@@ -438,7 +440,7 @@ def clean_health_data(dataframe):
         if (pd.isna(row['hospital_beds_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_beds['SpatialDimValueCode'].values):
             country_beds = df_beds.loc[df_beds['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Znajdź rok najbliższy do roku w aktualnym wierszu
+            # Find the year closest to the year in the current row
             country_beds['year_diff'] = abs(country_beds['Period'] - row['date'].year)
             closest_match = country_beds.loc[country_beds['year_diff'].idxmin()]
 
@@ -447,13 +449,13 @@ def clean_health_data(dataframe):
         if (pd.isna(row['hospital_beds_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_beds2['Country Code'].values):
             country_beds2 = df_beds2.loc[df_beds2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            # Collect all columns that can be interpreted as years, e.g. “1960”, “1961”, .... “2023”
             year_columns = [col for col in country_beds2.columns if col.isdigit()]
 
-            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            # Convert column names (string) to integers
             numeric_years = [int(y) for y in year_columns]
 
-            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            # Filter out only those years where the value is not NaN
             non_empty_years = {}
             for year in numeric_years:
                 val = country_beds2[str(year)].values[0]
@@ -461,17 +463,17 @@ def clean_health_data(dataframe):
                     non_empty_years[year] = val
 
             if len(non_empty_years) > 0:
-                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                # Find the year whose difference from row['date'].year is the smallest
                 target_year = row['date'].year
                 year_diffs = {year: abs(year - target_year) for year in non_empty_years}
-                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+                closest_year = min(year_diffs, key=year_diffs.get)  # Choose the year that has the smallest difference
 
-                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                # Get the value from the dataframe for this upcoming year
                 closest_value = non_empty_years[closest_year]
 
                 closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
-                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                # Assign to 'hospital_beds_per_1000' in the main dataframe
                 dataframe.loc[index, 'hospital_beds_per_1000'] = closest_value
             else:
                 dataframe.loc[index, 'hospital_beds_per_1000'] = 0
@@ -481,7 +483,7 @@ def clean_health_data(dataframe):
         if (pd.isna(row['health_expenditure_usd'])) & (row['iso_3166_1_alpha_3'] in df_current_health_expenditure['SpatialDimValueCode'].values):
             country_health_expenditure = df_current_health_expenditure.loc[df_current_health_expenditure['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
 
-            # Znajdź rok najbliższy do roku w aktualnym wierszu
+            # Find the year closest to the year in the current row
             country_health_expenditure['year_diff'] = abs(country_health_expenditure['Period'] - row['date'].year)
             closest_match = country_health_expenditure.loc[country_health_expenditure['year_diff'].idxmin()]
 
@@ -723,35 +725,89 @@ def main():
 
     print(f"{BLUE}Ended merging countries data frames{BASIC}")
 
+    df_wei = pd.read_csv('data/world_economic_indicators.csv')
+    df_wei = df_wei[['Country Code', 'Year', 'Unemployment, total (% of total labor force)']]
+    df_wei['Year'] = df_wei['Year'].astype(int)
+    df_wei = df_wei[(df_wei['Year'] >= 2020) & (df_wei['Year'] <= 2022)].copy()
+    combined_df["Year"] = combined_df["date"].dt.year
+    combined_df = combined_df.merge(df_wei, left_on=["iso_3166_1_alpha_3", "Year"], right_on=["Country Code", "Year"], how="left", suffixes=('', '_from_right'))
 
-    # Group by country and sort by date
-    combined_df = combined_df.sort_values(by=['location_key', 'date'])
+    df_suicides2020_2021 = pd.read_csv('data/suicide-rate-by-country.csv')
+    df_suicides2022 = pd.read_csv('data/countries_indexes_2022.csv')
 
-    # Saving the combined dataframes to a CSV file
-    # Filter and save each level directly to a file
-    #for level in [0, 1, 2, 3]:
-    #    combined_df.query(f"aggregation_level == {level}").to_csv(f'exported/combined_level_{level}.csv', index=False)
+    df_suicides2020_2021 = df_suicides2020_2021['SuicideRate_BothSexes_RatePer100k_2020', 'SuicideRate_BothSexes_RatePer100k_2021', 'country']
+    #df_suicides2022 = df_suicides2022[['Year'] == 2022]
+    df_suicides2022 = df_suicides2022['country', 'suicide_rate']
+    df_suicides2022 = df_suicides2022.rename(columns={'suicide_rate': 'SuicideRate_BothSexes_RatePer100k_2022'})
+    df_suicides = pd.merge(df_suicides2020_2021, df_suicides2022, on='country', how='left')
 
-    combined_df.to_csv('exported/combined.csv', index=False)
+    combined_df = combined_df.merge(df_suicides, left_on="country_name", right_on="country", how="left")
+    conditions = [
+        combined_df["Year"] == 2020,
+        combined_df["Year"] == 2021,
+        combined_df["Year"] == 2022
+    ]
+    choices = [
+        combined_df["SuicideRate_BothSexes_RatePer100k_2020"],
+        combined_df["SuicideRate_BothSexes_RatePer100k_2021"],
+        combined_df["SuicideRate_BothSexes_RatePer100k_2022"]
+    ]
+    combined_df["suicides"] = np.select(conditions, choices, default=np.nan)
+
+    combined_df = combined_df.drop(columns=['Year'])
+
+    # Lista kolumn, w których chcemy zastąpić NaN zerem
+    columns_with_na = [
+        'GDP',
+        'Population',
+        'Rank',
+        'Capital',
+        'Continent',
+        'Area (km²)',
+        'Density (per km²)',
+        'Growth Rate',
+        'World Population Percentage'
+    ]
+
+    # Wypełnienie wartości NaN zerami w wymienionych kolumnach
+    combined_df[columns_with_na] = combined_df[columns_with_na].fillna(0)
 
     # Dla każdej kolumny wyświetl wartości ujemne
+    print("\n\n")
     for column in combined_df.select_dtypes(include=[np.number]).columns:
         negative_count = (combined_df[column] < 0).sum()
 
         if negative_count > 0:
             print(f"Column '{column}' has {negative_count} negative values.")
 
+        rows_with_negatives_column = combined_df[combined_df[column] < 0]
+        print(rows_with_negatives_column)
+
+    print("\n\n")
     for column in combined_df.select_dtypes(include=[np.number]).columns:
         zero_count = (combined_df[column] == 0).sum()
 
         if zero_count > 0:
             print(f"Column '{column}' has {zero_count} values equal to 0.")
-
+    print("\n\n")
     for column in combined_df.columns:
         empty_count = combined_df[column].isna().sum()
 
         if empty_count > 0:
             print(f"Column '{column}' has {empty_count} empty fields (NaN).")
+    print("\n\n")
+
+    combined_df = combined_df.drop(columns=['iso_3166_1_alpha_3_from_right'])
+
+    # Group by country and sort by date
+    combined_df = combined_df.sort_values(by=['location_key', 'date'])
+
+    # Saving the combined dataframes to a CSV file
+    # Filter and save each level directly to a file
+    # for level in [0, 1, 2, 3]:
+    #    combined_df.query(f"aggregation_level == {level}").to_csv(f'exported/combined_level_{level}.csv', index=False)
+
+    combined_df.to_csv('exported/combined.csv', index=False)
 
     print(f"{GREEN}Ended merging data frames and saved to exported/combined.csv{BASIC}")
 
