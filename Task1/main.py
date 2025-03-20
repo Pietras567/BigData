@@ -735,9 +735,8 @@ def main():
     df_suicides2020_2021 = pd.read_csv('data/suicide-rate-by-country.csv')
     df_suicides2022 = pd.read_csv('data/countries_indexes_2022.csv')
 
-    df_suicides2020_2021 = df_suicides2020_2021['SuicideRate_BothSexes_RatePer100k_2020', 'SuicideRate_BothSexes_RatePer100k_2021', 'country']
-    #df_suicides2022 = df_suicides2022[['Year'] == 2022]
-    df_suicides2022 = df_suicides2022['country', 'suicide_rate']
+    df_suicides2020_2021 = df_suicides2020_2021[['SuicideRate_BothSexes_RatePer100k_2020', 'SuicideRate_BothSexes_RatePer100k_2021', 'country']]
+    df_suicides2022 = df_suicides2022[['country', 'suicide_rate']]
     df_suicides2022 = df_suicides2022.rename(columns={'suicide_rate': 'SuicideRate_BothSexes_RatePer100k_2022'})
     df_suicides = pd.merge(df_suicides2020_2021, df_suicides2022, on='country', how='left')
 
@@ -752,7 +751,7 @@ def main():
         combined_df["SuicideRate_BothSexes_RatePer100k_2021"],
         combined_df["SuicideRate_BothSexes_RatePer100k_2022"]
     ]
-    combined_df["suicides"] = np.select(conditions, choices, default=np.nan)
+    combined_df["SuicideRate_BothSexes_RatePer100k"] = np.select(conditions, choices, default=np.nan)
 
     combined_df = combined_df.drop(columns=['Year'])
 
@@ -766,7 +765,9 @@ def main():
         'Area (km²)',
         'Density (per km²)',
         'Growth Rate',
-        'World Population Percentage'
+        'World Population Percentage',
+        'SuicideRate_BothSexes_RatePer100k',
+        'Unemployment, total (% of total labor force)'
     ]
 
     # Filling NaN values with zeros in the listed columns
@@ -797,7 +798,18 @@ def main():
             print(f"Column '{column}' has {empty_count} empty fields (NaN).")
     print("\n\n")
 
-    combined_df = combined_df.drop(columns=['iso_3166_1_alpha_3_from_right'])
+    # Find duplicates
+    duplicates = combined_df[combined_df.duplicated(subset=['location_key', 'date'], keep=False)]
+
+    print("Duplicates:")
+    print(duplicates)
+
+    counts = combined_df['iso_3166_1_alpha_3'].value_counts()
+    print(counts)
+
+    combined_df = combined_df.drop(columns=['iso_3166_1_alpha_3_from_right', 'SuicideRate_BothSexes_RatePer100k_2020',
+                                            'SuicideRate_BothSexes_RatePer100k_2021', 'SuicideRate_BothSexes_RatePer100k_2022',
+                                            'country', "Country Code"])
 
     # Group by country and sort by date
     combined_df = combined_df.sort_values(by=['location_key', 'date'])
