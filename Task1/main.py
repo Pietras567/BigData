@@ -23,7 +23,7 @@ def clean_countries_data(dataframe):
 
 def process_group(group, new_column_name, cumulative_column_name):
     sorted_group = group.sort_values('date')
-    return sorted_group
+    #return sorted_group
     # Cleaning time series - repairing missing values
     """
     Algorytm przetwarza wiersze w obrębie każdej grupy w następujący sposób:
@@ -143,8 +143,12 @@ def fix_negative_values(dataframe):
 
 def clean_incidence_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
+    dataframe['new_confirmed'] = pd.to_numeric(dataframe['new_confirmed'], errors='coerce').astype('Int64')
+    dataframe['cumulative_confirmed'] = pd.to_numeric(dataframe['cumulative_confirmed'], errors='coerce').astype('Int64')
+    dataframe['new_tested'] = pd.to_numeric(dataframe['new_tested'], errors='coerce').astype('Int64')
+    dataframe['cumulative_tested'] = pd.to_numeric(dataframe['cumulative_tested'], errors='coerce').astype('Int64')
 
-    dataframe = fix_negative_values(dataframe)
+    #dataframe = fix_negative_values(dataframe)
 
     result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_confirmed',
                                                                        cumulative_column_name='cumulative_confirmed',
@@ -168,6 +172,8 @@ def clean_incidence_data(dataframe):
 
 def clean_mortality_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
+    dataframe['new_deceased'] = pd.to_numeric(dataframe['new_deceased'], errors='coerce').astype('Int64')
+    dataframe['cumulative_deceased'] = pd.to_numeric(dataframe['cumulative_deceased'], errors='coerce').astype('Int64')
 
     #dataframe = fix_negative_values(dataframe)
 
@@ -183,6 +189,12 @@ def clean_mortality_data(dataframe):
 
 def clean_vaccination_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
+    dataframe['new_persons_vaccinated'] = pd.to_numeric(dataframe['new_persons_vaccinated'], errors='coerce').astype('Int64')
+    dataframe['cumulative_persons_vaccinated'] = pd.to_numeric(dataframe['cumulative_persons_vaccinated'], errors='coerce').astype('Int64')
+    dataframe['new_persons_fully_vaccinated'] = pd.to_numeric(dataframe['new_persons_fully_vaccinated'], errors='coerce').astype('Int64')
+    dataframe['cumulative_persons_fully_vaccinated'] = pd.to_numeric(dataframe['cumulative_persons_fully_vaccinated'], errors='coerce').astype('Int64')
+    dataframe['new_vaccine_doses_administered'] = pd.to_numeric(dataframe['new_vaccine_doses_administered'], errors='coerce').astype('Int64')
+    dataframe['cumulative_vaccine_doses_administered'] = pd.to_numeric(dataframe['cumulative_vaccine_doses_administered'], errors='coerce').astype('Int64')
 
     #dataframe = fix_negative_values(dataframe)
 
@@ -679,6 +691,8 @@ def main():
     combined_df = combined_df.merge(df_gdp, left_on=["iso_3166_1_alpha_3"], right_on=['Country Code'], how="left", suffixes=('', '_from_right'))
     combined_df = combined_df.drop(columns=['Country Code'])
 
+    print(f"{BLUE}Ended merging gdp data frames{BASIC}")
+
     df_countries = pd.read_csv('data/world_countries.csv')
     df_countries = df_countries[['Rank', 'CCA3', 'Capital', 'Continent', 'Area (km²)', 'Density (per km²)', 'Growth Rate', 'World Population Percentage', '2022 Population', '2020 Population']]
 
@@ -704,10 +718,10 @@ def main():
 
     combined_df = combined_df.merge(df_countries, on=["iso_3166_1_alpha_3"], how="left", suffixes=('', '_from_right'))
 
-    for col in combined_df.columns:
-        print(f"Number of missing values in {col}: {combined_df[combined_df[col].isna()]}")
+    #for col in combined_df.columns:
+    #    print(f"Number of missing values in {col}: {combined_df[combined_df[col].isna()]}")
 
-    print(f"{GREEN}Ended merging countries data frames{BASIC}")
+    print(f"{BLUE}Ended merging countries data frames{BASIC}")
 
 
     # Group by country and sort by date
@@ -722,11 +736,22 @@ def main():
 
     # Dla każdej kolumny wyświetl wartości ujemne
     for column in combined_df.select_dtypes(include=[np.number]).columns:
-        # Zliczanie wartości ujemnych
         negative_count = (combined_df[column] < 0).sum()
 
         if negative_count > 0:
             print(f"Column '{column}' has {negative_count} negative values.")
+
+    for column in combined_df.select_dtypes(include=[np.number]).columns:
+        zero_count = (combined_df[column] == 0).sum()
+
+        if zero_count > 0:
+            print(f"Column '{column}' has {zero_count} values equal to 0.")
+
+    for column in combined_df.columns:
+        empty_count = combined_df[column].isna().sum()
+
+        if empty_count > 0:
+            print(f"Column '{column}' has {empty_count} empty fields (NaN).")
 
     print(f"{GREEN}Ended merging data frames and saved to exported/combined.csv{BASIC}")
 
