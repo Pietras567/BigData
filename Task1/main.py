@@ -211,11 +211,14 @@ def clean_health_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
 
     df_doctors = pd.read_csv('data/data_doctors.csv')
+    df_doctors2 = pd.read_csv('data/data_doctors2.csv', sep=";")
     df_nurses = pd.read_csv('data/data_nurses.csv')
+    df_nurses2 = pd.read_csv('data/data_nurses2.csv', sep=";")
     df_smoking = pd.read_csv('data/data_smoking.csv', sep=';')
     df_diabetes = pd.read_csv('data/data_diabetes2.csv', sep=';')
     df_diabetes2 = pd.read_csv('data/data_diabetes.csv')
     df_beds = pd.read_csv('data/data_beds.csv')
+    df_beds2 = pd.read_csv('data/data_beds2.csv', sep=";")
     df_current_health_expenditure = pd.read_csv('data/data_current_health_expenditure.csv')
 
     for index, row in dataframe.iterrows():
@@ -227,6 +230,43 @@ def clean_health_data(dataframe):
             closest_match = country_doctors.loc[country_doctors['year_diff'].idxmin()]
 
             dataframe.loc[index, 'physicians_per_1000'] = closest_match['Value'] / 10
+
+        if (pd.isna(row['physicians_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors2['Country Code'].values):
+            country_doctors2 = df_doctors2.loc[df_doctors2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Zbierz wszystkie kolumny, które reprezentują lata, pod postacią: "<rok> [YR<rok>]"
+            year_columns = []
+            for col in country_doctors2.columns:
+                if '[YR' in col:
+                    possible_year = col.split()[0]
+
+                    if possible_year.isdigit():
+                        year_columns.append(col)
+
+            # Tworzymy słownik: {rok_int: wartość}
+            non_empty_years = {}
+            for col in year_columns:
+                # Odczytujemy rok (fragment przed spacją)
+                year_str = col.split()[0]  # "2015" z "2015 [YR2015]"
+                val = country_doctors2[col].values[0]
+                if (year_str.isdigit()) and not pd.isna(val):
+                    non_empty_years[int(year_str)] = val
+
+            # Jeśli mamy jakiekolwiek niepuste wartości dla danego kraju
+            if len(non_empty_years) > 0:
+                target_year = row['date'].year
+                year_diffs = {year: abs(year - target_year) for year in non_empty_years}
+
+                # Znajdź rok o najmniejszej różnicy od target_year
+                closest_year = min(year_diffs, key=year_diffs.get)
+
+                closest_value = non_empty_years[closest_year]
+
+                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+
+                dataframe.loc[index, 'physicians_per_1000'] = closest_value
+            else:
+                dataframe.loc[index, 'physicians_per_1000'] = 0
         else:
             dataframe.loc[index, 'physicians_per_1000'] = 0
 
@@ -238,6 +278,38 @@ def clean_health_data(dataframe):
             closest_match = country_nurses.loc[country_nurses['year_diff'].idxmin()]
 
             dataframe.loc[index, 'nurses_per_1000'] = closest_match['Value'] / 10
+
+        if (pd.isna(row['nurses_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_doctors2['Country Code'].values):
+            country_nurses2 = df_nurses2.loc[df_nurses2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            year_columns = [col for col in country_nurses2.columns if col.isdigit()]
+
+            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            numeric_years = [int(y) for y in year_columns]
+
+            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            non_empty_years = {}
+            for year in numeric_years:
+                val = country_nurses2[str(year)].values[0]
+                if not pd.isna(val):
+                    non_empty_years[year] = val
+
+            if len(non_empty_years) > 0:
+                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                target_year = row['date'].year
+                year_diffs = {year: abs(year - target_year) for year in non_empty_years}
+                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+
+                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                closest_value = non_empty_years[closest_year]
+
+                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+
+                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                dataframe.loc[index, 'nurses_per_1000'] = closest_value
+            else:
+                dataframe.loc[index, 'nurses_per_1000'] = 0
         else:
             dataframe.loc[index, 'nurses_per_1000'] = 0
 
@@ -270,6 +342,10 @@ def clean_health_data(dataframe):
 
                 # Przypisz do 'smoking_prevalence' w głównym dataframe
                 dataframe.loc[index, 'smoking_prevalence'] = closest_value
+            else:
+                dataframe.loc[index, 'smoking_prevalence'] = 0
+        else:
+            dataframe.loc[index, 'smoking_prevalence'] = 0
 
         if (pd.isna(row['diabetes_prevalence'])) & (row['iso_3166_1_alpha_3'] in df_diabetes['Country Code'].values):
             country_diabetes = df_diabetes.loc[df_diabetes['Country Code'] == row['iso_3166_1_alpha_3']].copy()
@@ -335,6 +411,10 @@ def clean_health_data(dataframe):
                 closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
 
                 dataframe.loc[index, 'diabetes_prevalence'] = closest_value
+            else:
+                dataframe.loc[index, 'diabetes_prevalence'] = 0
+        else:
+            dataframe.loc[index, 'diabetes_prevalence'] = 0
 
         if (pd.isna(row['hospital_beds_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_beds['SpatialDimValueCode'].values):
             country_beds = df_beds.loc[df_beds['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
@@ -344,8 +424,40 @@ def clean_health_data(dataframe):
             closest_match = country_beds.loc[country_beds['year_diff'].idxmin()]
 
             dataframe.loc[index, 'hospital_beds_per_1000'] = closest_match['Value'] / 10
-        #else:
-        #    dataframe.loc[index, 'hospital_beds_per_1000'] = 0
+
+        if (pd.isna(row['hospital_beds_per_1000'])) & (row['iso_3166_1_alpha_3'] in df_beds2['Country Code'].values):
+            country_beds2 = df_beds2.loc[df_beds2['Country Code'] == row['iso_3166_1_alpha_3']].copy()
+
+            # Zbierz wszystkie kolumny, które da się zinterpretować jako lata, np. "1960", "1961", ... "2023"
+            year_columns = [col for col in country_beds2.columns if col.isdigit()]
+
+            # Zamieniamy nazwy kolumn (string) na liczby całkowite
+            numeric_years = [int(y) for y in year_columns]
+
+            # Odfiltruj tylko te lata, gdzie wartość nie jest NaN
+            non_empty_years = {}
+            for year in numeric_years:
+                val = country_beds2[str(year)].values[0]
+                if not pd.isna(val):
+                    non_empty_years[year] = val
+
+            if len(non_empty_years) > 0:
+                # Znajdź rok, którego różnica względem row['date'].year jest najmniejsza
+                target_year = row['date'].year
+                year_diffs = {year: abs(year - target_year) for year in non_empty_years}
+                closest_year = min(year_diffs, key=year_diffs.get)  # wybieramy ten rok, który ma najmniejszą różnicę
+
+                # Pobierz wartość z dataframe'u dla tego najbliższego roku
+                closest_value = non_empty_years[closest_year]
+
+                closest_value = pd.to_numeric(str(closest_value).replace(',', '.'), errors='coerce')
+
+                # Przypisz do 'smoking_prevalence' w głównym dataframe
+                dataframe.loc[index, 'hospital_beds_per_1000'] = closest_value
+            else:
+                dataframe.loc[index, 'hospital_beds_per_1000'] = 0
+        else:
+            dataframe.loc[index, 'hospital_beds_per_1000'] = 0
 
         if (pd.isna(row['health_expenditure_usd'])) & (row['iso_3166_1_alpha_3'] in df_current_health_expenditure['SpatialDimValueCode'].values):
             country_health_expenditure = df_current_health_expenditure.loc[df_current_health_expenditure['SpatialDimValueCode'] == row['iso_3166_1_alpha_3']].copy()
@@ -355,8 +467,8 @@ def clean_health_data(dataframe):
             closest_match = country_health_expenditure.loc[country_health_expenditure['year_diff'].idxmin()]
 
             dataframe.loc[index, 'health_expenditure_usd'] = closest_match['Value']
-        #else:
-        #    dataframe.loc[index, 'health_expenditure_usd'] = 0
+        else:
+            dataframe.loc[index, 'health_expenditure_usd'] = 0
 
     print(f"{BLUE}Cleaned health indicators data{BASIC}")
 
@@ -557,7 +669,36 @@ def main():
 
     df_gdp = df_gdp.rename(columns={'Value': 'GDP'})
     df_gdp = df_gdp.drop(columns=['Country Name', 'Year'])
-    combined_df = combined_df.merge(df_gdp, left_on=["iso_3166_1_alpha_3"], right_on=['Country Code'], how="left")
+    combined_df = combined_df.merge(df_gdp, left_on=["iso_3166_1_alpha_3"], right_on=['Country Code'], how="left", suffixes=('', '_from_right'))
+    combined_df = combined_df.drop(columns=['Country Code'])
+
+    df_countries = pd.read_csv('data/world_countries.csv')
+    df_countries = df_countries[['Rank', 'CCA3', 'Capital', 'Continent', 'Area (km²)', 'Density (per km²)', 'Growth Rate', 'World Population Percentage', '2022 Population', '2020 Population']]
+
+    # dynamicznie populacja
+    df_countries['2021 Population'] = round((df_countries['2022 Population'] / df_countries['Growth Rate']), 0)
+
+    # 1. Zamiana tabeli df_countries w format długi:
+    df_countries_long = df_countries.melt(
+        id_vars="CCA3",
+        value_vars=["2020 Population", "2021 Population", "2022 Population"],
+        var_name="Year",
+        value_name="Population"
+    )
+    df_countries = df_countries.drop(columns=['2020 Population', '2021 Population', '2022 Population'])
+    # Wyciągamy z nazwy kolumny rok i zapisujemy w formacie liczbowym
+    df_countries_long["Year"] = df_countries_long["Year"].str.extract(r'(\d{4})').astype(int)
+    df_countries_long = df_countries_long.rename(columns={'CCA3': 'iso_3166_1_alpha_3'})
+    df_countries = df_countries.rename(columns={'CCA3': 'iso_3166_1_alpha_3'})
+
+    # 2. Wyciągnięcie roku z combined_df i łączenie po roku:
+    combined_df["Year"] = combined_df["date"].dt.year
+    combined_df = combined_df.merge(df_countries_long, on=["iso_3166_1_alpha_3", "Year"], how="left", suffixes=('', '_from_right'))
+
+    combined_df = combined_df.merge(df_countries, on=["iso_3166_1_alpha_3"], how="left", suffixes=('', '_from_right'))
+
+    for col in combined_df.columns:
+        print(f"Number of missing values in {col}: {combined_df[combined_df[col].isna()]}")
 
     print(f"{GREEN}Ended merging countries data frames{BASIC}")
 
@@ -565,12 +706,18 @@ def main():
     # Group by country and sort by date
     combined_df = combined_df.sort_values(by=['location_key', 'date'])
 
+    # Saving the combined dataframes to a CSV file
     # Filter and save each level directly to a file
     #for level in [0, 1, 2, 3]:
     #    combined_df.query(f"aggregation_level == {level}").to_csv(f'exported/combined_level_{level}.csv', index=False)
 
-    # Saving the combined dataframe to a CSV file
     combined_df.to_csv('exported/combined.csv', index=False)
+
+    # Dla każdej kolumny wyświetl wartości ujemne
+    for column in combined_df.columns:
+        negative_values = combined_df[combined_df[column] < 0]
+        if not negative_values.empty:
+            print(f"\nNegative values in column {column}: {negative_values[column]}")
 
     print(f"{GREEN}Ended merging data frames and saved to exported/combined.csv{BASIC}")
 
