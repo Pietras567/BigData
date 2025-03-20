@@ -682,10 +682,10 @@ def main():
     #df_gdp = df_gdp[df_gdp['Year'] == 2016]
     #print(df_gdp['Value'].isnull().sum().sum())
 
-    # Sortujemy dane według kolumny 'Year'
+    # Sort the data by the 'Year' column
     df_gdp = df_gdp.sort_values(by='Year')
 
-    # Grupujemy po Country Code i bierzemy ostatni wiersz (maksymalny rok)
+    # Group by Country Code and take the last row (maximum year)
     df_gdp = df_gdp.groupby('Country Code', as_index=False).last()
 
     df_gdp = df_gdp.rename(columns={'Value': 'GDP'})
@@ -698,10 +698,10 @@ def main():
     df_countries = pd.read_csv('data/world_countries.csv')
     df_countries = df_countries[['Rank', 'CCA3', 'Capital', 'Continent', 'Area (km²)', 'Density (per km²)', 'Growth Rate', 'World Population Percentage', '2022 Population', '2020 Population']]
 
-    # dynamicznie populacja
+    # Calculate population in 2021 for each country
     df_countries['2021 Population'] = round((df_countries['2022 Population'] / df_countries['Growth Rate']), 0)
 
-    # 1. Zamiana tabeli df_countries w format długi:
+    # 1. Convert df_countries table into long format
     df_countries_long = df_countries.melt(
         id_vars="CCA3",
         value_vars=["2020 Population", "2021 Population", "2022 Population"],
@@ -709,12 +709,12 @@ def main():
         value_name="Population"
     )
     df_countries = df_countries.drop(columns=['2020 Population', '2021 Population', '2022 Population'])
-    # Wyciągamy z nazwy kolumny rok i zapisujemy w formacie liczbowym
+    # Extract the year from the column name and write it in numeric format
     df_countries_long["Year"] = df_countries_long["Year"].str.extract(r'(\d{4})').astype(int)
     df_countries_long = df_countries_long.rename(columns={'CCA3': 'iso_3166_1_alpha_3'})
     df_countries = df_countries.rename(columns={'CCA3': 'iso_3166_1_alpha_3'})
 
-    # 2. Wyciągnięcie roku z combined_df i łączenie po roku:
+    # 2. Pulling a year out of the combined_df and combining after a year:
     combined_df["Year"] = combined_df["date"].dt.year
     combined_df = combined_df.merge(df_countries_long, on=["iso_3166_1_alpha_3", "Year"], how="left", suffixes=('', '_from_right'))
 
@@ -756,7 +756,7 @@ def main():
 
     combined_df = combined_df.drop(columns=['Year'])
 
-    # Lista kolumn, w których chcemy zastąpić NaN zerem
+    # List of columns in which we want to replace NaN with a zero
     columns_with_na = [
         'GDP',
         'Population',
@@ -769,10 +769,10 @@ def main():
         'World Population Percentage'
     ]
 
-    # Wypełnienie wartości NaN zerami w wymienionych kolumnach
+    # Filling NaN values with zeros in the listed columns
     combined_df[columns_with_na] = combined_df[columns_with_na].fillna(0)
 
-    # Dla każdej kolumny wyświetl wartości ujemne
+    # Display negative, empty and equal to zero values for each column
     print("\n\n")
     for column in combined_df.select_dtypes(include=[np.number]).columns:
         negative_count = (combined_df[column] < 0).sum()
