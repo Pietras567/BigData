@@ -832,8 +832,7 @@ def main():
                                             'SuicideRate_BothSexes_RatePer100k_2022',
                                             'country', 'Country Code', 'Year', 'SuicideRate_BothSexes_RatePer100k_2020',
                                             'SuicideRate_BothSexes_RatePer100k_2021',
-                                            'SuicideRate_BothSexes_RatePer100k_2022',
-                                            ''])
+                                            'SuicideRate_BothSexes_RatePer100k_2022'])
 
     # Display negative, empty and equal to zero values for each column
     print("\n\n")
