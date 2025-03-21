@@ -133,9 +133,9 @@ def process_group(group, new_column_name, cumulative_column_name):
 
     return sorted_group
 
-def fix_negative_values(dataframe):
-    # Fixing negative values
-    for column in ['new_confirmed', 'cumulative_confirmed', 'new_tested', 'cumulative_tested']:
+def fix_negative_values(dataframe, columns):
+    # Fixing negative values by reversing
+    for column in columns:
         dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
         dataframe.loc[dataframe[column] < 0, column] = dataframe.loc[dataframe[column] < 0, column] * -1
 
@@ -753,7 +753,51 @@ def main():
     ]
     combined_df["SuicideRate_BothSexes_RatePer100k"] = np.select(conditions, choices, default=np.nan)
 
-    combined_df = combined_df.drop(columns=['Year'])
+    df_cost_of_living_2020 = pd.read_csv('data/cost_of_living_2020.csv')
+    df_cost_of_living_2021 = pd.read_csv('data/cost_of_living_2021.csv')
+    df_cost_of_living_2022 = pd.read_csv('data/cost_of_living_2022.csv')
+
+    # Dictionary “frames” linking the year to the corresponding Life Cost DataFrame
+    frames = {
+        2020: df_cost_of_living_2020,
+        2021: df_cost_of_living_2021,
+        2022: df_cost_of_living_2022
+    }
+
+    def get_cost_values(row):
+        year = row['Year']
+        country = row['country_name']
+
+        if year in frames:
+            df_cost = frames[year]
+            matching = df_cost.loc[df_cost['Country'] == country]
+
+            if not matching.empty:
+                return pd.Series({
+                    'Cost of Living Index': matching['Cost of Living Index'].iloc[0],
+                    'Rent Index': matching['Rent Index'].iloc[0],
+                    'Cost of Living Plus Rent Index': matching['Cost of Living Plus Rent Index'].iloc[0],
+                    'Groceries Index': matching['Groceries Index'].iloc[0],
+                    'Restaurant Price Index': matching['Restaurant Price Index'].iloc[0],
+                    'Local Purchasing Power Index': matching['Local Purchasing Power Index'].iloc[0],
+                })
+
+        # If there is no match, return NaN in all columns
+        return pd.Series({
+            'Cost of Living Index': float('nan'),
+            'Rent Index': float('nan'),
+            'Cost of Living Plus Rent Index': float('nan'),
+            'Groceries Index': float('nan'),
+            'Restaurant Price Index': float('nan'),
+            'Local Purchasing Power Index': float('nan'),
+        })
+
+    # Assign columns in the combined_df
+    combined_df[['Cost of Living Index', 'Rent Index', 'Cost of Living Plus Rent Index', 'Groceries Index', 'Restaurant Price Index', 'Local Purchasing Power Index']] = combined_df.apply(get_cost_values, axis=1)
+
+    df_salary_data = pd.read_csv('data/salary_data.csv')
+    df_salary_data = df_salary_data.drop(columns=['continent_name', 'wage_span'])
+    combined_df = combined_df.merge(df_salary_data, on=["country_name"], how="left", suffixes=('', '_from_right'))
 
     # List of columns in which we want to replace NaN with a zero
     columns_with_na = [
@@ -767,11 +811,29 @@ def main():
         'Growth Rate',
         'World Population Percentage',
         'SuicideRate_BothSexes_RatePer100k',
-        'Unemployment, total (% of total labor force)'
+        'Unemployment, total (% of total labor force)',
+        'Cost of Living Index',
+        'Rent Index',
+        'Cost of Living Plus Rent Index',
+        'Groceries Index',
+        'Restaurant Price Index',
+        'Local Purchasing Power Index',
+        'median_salary',
+        'average_salary',
+        'lowest_salary',
+        'highest_salary'
     ]
 
     # Filling NaN values with zeros in the listed columns
     combined_df[columns_with_na] = combined_df[columns_with_na].fillna(0)
+
+    combined_df = combined_df.drop(columns=['iso_3166_1_alpha_3_from_right', 'SuicideRate_BothSexes_RatePer100k_2020',
+                                            'SuicideRate_BothSexes_RatePer100k_2021',
+                                            'SuicideRate_BothSexes_RatePer100k_2022',
+                                            'country', 'Country Code', 'Year', 'SuicideRate_BothSexes_RatePer100k_2020',
+                                            'SuicideRate_BothSexes_RatePer100k_2021',
+                                            'SuicideRate_BothSexes_RatePer100k_2022',
+                                            ''])
 
     # Display negative, empty and equal to zero values for each column
     print("\n\n")
@@ -781,8 +843,8 @@ def main():
         if negative_count > 0:
             print(f"Column '{column}' has {negative_count} negative values.")
 
-        rows_with_negatives_column = combined_df[combined_df[column] < 0]
-        print(rows_with_negatives_column)
+        #rows_with_negatives_column = combined_df[combined_df[column] < 0]
+        #print(rows_with_negatives_column)
 
     print("\n\n")
     for column in combined_df.select_dtypes(include=[np.number]).columns:
@@ -805,11 +867,9 @@ def main():
     print(duplicates)
 
     counts = combined_df['iso_3166_1_alpha_3'].value_counts()
+    counts = counts[counts != 991]
+    print(f"\nNumber of countries with amount records not equal to number of dataset duraion:")
     print(counts)
-
-    combined_df = combined_df.drop(columns=['iso_3166_1_alpha_3_from_right', 'SuicideRate_BothSexes_RatePer100k_2020',
-                                            'SuicideRate_BothSexes_RatePer100k_2021', 'SuicideRate_BothSexes_RatePer100k_2022',
-                                            'country', "Country Code"])
 
     # Group by country and sort by date
     combined_df = combined_df.sort_values(by=['location_key', 'date'])
