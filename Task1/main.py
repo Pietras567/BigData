@@ -499,7 +499,7 @@ def clean_health_data(dataframe):
 def main():
     start_time = time.time()
 
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-2ab5d0de9937.json" # path to API key
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-a8b1ef636fd3.json" # path to API key
     client = bigquery.Client()
 
     # Create catalog if not exists
@@ -679,7 +679,6 @@ def main():
     #print(min(df_gdp['Year']))
     #print(df_gdp['Year'].value_counts())
     #print(df_gdp['Country Code'].nunique())
-    #df_gdp = df_gdp[df_gdp['Year'] == 2016]
     #print(df_gdp['Value'].isnull().sum().sum())
 
     # Sort the data by the 'Year' column
@@ -701,7 +700,7 @@ def main():
     # Calculate population in 2021 for each country
     df_countries['2021 Population'] = round((df_countries['2022 Population'] / df_countries['Growth Rate']), 0)
 
-    # 1. Convert df_countries table into long format
+    # Convert df_countries table into long format
     df_countries_long = df_countries.melt(
         id_vars="CCA3",
         value_vars=["2020 Population", "2021 Population", "2022 Population"],
@@ -714,7 +713,7 @@ def main():
     df_countries_long = df_countries_long.rename(columns={'CCA3': 'iso_3166_1_alpha_3'})
     df_countries = df_countries.rename(columns={'CCA3': 'iso_3166_1_alpha_3'})
 
-    # 2. Pulling a year out of the combined_df and combining after a year:
+    # Pulling a year out of the combined_df and combining after a year:
     combined_df["Year"] = combined_df["date"].dt.year
     combined_df = combined_df.merge(df_countries_long, on=["iso_3166_1_alpha_3", "Year"], how="left", suffixes=('', '_from_right'))
 
