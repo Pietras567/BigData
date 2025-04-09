@@ -632,7 +632,9 @@ def main():
     print(f"\n\n{GREEN}Started extracting and cleaning the state of health of the population data{BASIC}")
 
     query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, '
-             'hospital_beds_per_1000, nurses_per_1000, physicians_per_1000, health_expenditure_usd '
+             'hospital_beds_per_1000, nurses_per_1000, physicians_per_1000, health_expenditure_usd, '
+             'population_urban, population_age_80_and_older, clustered_population, stringency_index, '
+             'emergency_investment_in_healthcare, investment_in_vaccines, fiscal_measures, income_support '
              'from bigquery-public-data.covid19_open_data.covid19_open_data '
              'where aggregation_level = 0')
     query_job = client.query(query)
@@ -820,7 +822,15 @@ def main():
         'median_salary',
         'average_salary',
         'lowest_salary',
-        'highest_salary'
+        'highest_salary',
+        'population_urban',
+        'population_age_80_and_older',
+        'clustered_population',
+        'stringency_index',
+        'emergency_investment_in_healthcare',
+        'investment_in_vaccines',
+        'fiscal_measures',
+        'income_support',
     ]
 
     # Filling NaN values with zeros in the listed columns
