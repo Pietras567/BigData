@@ -133,13 +133,60 @@ def process_group(group, new_column_name, cumulative_column_name):
 
     return sorted_group
 
-def fix_negative_values(dataframe, columns):
-    # Fixing negative values by reversing
-    for column in columns:
-        dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
-        dataframe.loc[dataframe[column] < 0, column] = dataframe.loc[dataframe[column] < 0, column] * -1
 
-    return dataframe
+def fix_negative_values(dataframe, new_col, cum_col):
+    """
+    Funkcja przyjmuje DataFrame zawierający kolumny z danymi numerycznymi new oraz cumulative
+    oraz grupuje dane po kolumnie 'location_key'. Dla każdej grupy dokonuje następujących operacji:
+      1. Zmiana ujemnych wartości w kolumnie new na ich wartość bezwzględną.
+      2. Przeliczenie wartości cumulative:
+         - Jeśli dany rekord jest pierwszy lub poprzednia wartość cumulative jest NaN,
+           ustawia cumulative = new.
+         - W przeciwnym przypadku cumulative = poprzednie cumulative + bieżące new.
+      3. Ostateczna korekta cumulative – dla każdego rekordu (od drugiego) wartość cumulative
+         zostaje przeliczona jako suma poprzedniego cumulative oraz bieżącego new.
+
+    Args:
+        dataframe (pd.DataFrame): DataFrame zawierający kolumny new, cumulative oraz iso_3166_1_alpha_3.
+        new_col (str): Nazwa kolumny zawierającej wartości new.
+        cum_col (str): Nazwa kolumny zawierającej wartości cumulative.
+
+    Returns:
+        pd.DataFrame: Przetworzony DataFrame z poprawionymi wartościami cumulative.
+    """
+
+    def process_group(group: pd.DataFrame) -> pd.DataFrame:
+        # Tworzymy kopię grupy aby nie modyfikować oryginalnego DataFrame
+        df_group = group.copy()
+
+        # Upewniamy się, że kolumna cumulative istnieje; w przeciwnym razie ją tworzymy
+        if cum_col not in df_group.columns:
+            df_group[cum_col] = np.nan
+
+        # 1. Zamiana ujemnych wartości new na dodatnie
+        df_group[new_col] = df_group[new_col].apply(lambda x: abs(x))
+
+        # 2. Pierwsza iteracja – przeliczanie cumulative
+        # Wartości cumulative ustawiamy początkowo na NaN
+        df_group[cum_col] = np.nan
+        for i in range(len(df_group)):
+            if i == 0 or pd.isna(df_group.iloc[i - 1][cum_col]):
+                df_group.at[df_group.index[i], cum_col] = df_group.iloc[i][new_col]
+            else:
+                df_group.at[df_group.index[i], cum_col] = df_group.iloc[i - 1][cum_col] + df_group.iloc[i][new_col]
+
+        # 3. Ostateczna korekta – ponowne przeliczenie cumulative
+        for i in range(1, len(df_group)):
+            df_group.at[df_group.index[i], cum_col] = df_group.at[df_group.index[i - 1], cum_col] + df_group.at[
+                df_group.index[i], new_col]
+
+        return df_group
+
+    # Grupujemy dane po kolumnie kodów państw i przetwarzamy każdą grupę osobno
+    df_fixed = dataframe.groupby('location_key', group_keys=False).apply(process_group)
+
+    return df_fixed
+
 
 def clean_incidence_data(dataframe):
     dataframe['date'] = pd.to_datetime(dataframe['date'])
@@ -148,13 +195,13 @@ def clean_incidence_data(dataframe):
     dataframe['new_tested'] = pd.to_numeric(dataframe['new_tested'], errors='coerce').astype('Int64')
     dataframe['cumulative_tested'] = pd.to_numeric(dataframe['cumulative_tested'], errors='coerce').astype('Int64')
 
-    #dataframe = fix_negative_values(dataframe)
-
     result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_confirmed',
                                                                        cumulative_column_name='cumulative_confirmed',
                                                                        include_groups=True)
 
     result_df = result_df.reset_index(drop=True)
+
+    result_df = fix_negative_values(result_df, 'new_confirmed', 'cumulative_confirmed')
 
     print(f"{BLUE}Cleaned COVID-19 confirmed incidents data{BASIC}")
 
@@ -163,6 +210,8 @@ def clean_incidence_data(dataframe):
                                                                        include_groups=True)
 
     result_df = result_df.reset_index(drop=True)
+
+    result_df = fix_negative_values(result_df, 'new_tested', 'cumulative_tested')
 
     print(f"{BLUE}Cleaned COVID-19 tests data{BASIC}")
 
@@ -175,13 +224,13 @@ def clean_mortality_data(dataframe):
     dataframe['new_deceased'] = pd.to_numeric(dataframe['new_deceased'], errors='coerce').astype('Int64')
     dataframe['cumulative_deceased'] = pd.to_numeric(dataframe['cumulative_deceased'], errors='coerce').astype('Int64')
 
-    #dataframe = fix_negative_values(dataframe)
-
     result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_deceased',
                                                         cumulative_column_name='cumulative_deceased',
                                                         include_groups=True)
 
     result_df = result_df.reset_index(drop=True)
+
+    result_df = fix_negative_values(result_df, 'new_deceased', 'cumulative_deceased')
 
     print(f"{BLUE}Cleaned COVID-19 mortality data{BASIC}")
 
@@ -196,13 +245,13 @@ def clean_vaccination_data(dataframe):
     dataframe['new_vaccine_doses_administered'] = pd.to_numeric(dataframe['new_vaccine_doses_administered'], errors='coerce').astype('Int64')
     dataframe['cumulative_vaccine_doses_administered'] = pd.to_numeric(dataframe['cumulative_vaccine_doses_administered'], errors='coerce').astype('Int64')
 
-    #dataframe = fix_negative_values(dataframe)
-
     result_df = dataframe.groupby('location_key').apply(process_group, new_column_name='new_persons_vaccinated',
                                                         cumulative_column_name='cumulative_persons_vaccinated',
                                                         include_groups=True)
 
     result_df = result_df.reset_index(drop=True)
+
+    result_df = fix_negative_values(result_df, 'new_persons_vaccinated', 'cumulative_persons_vaccinated')
 
     print(f"{BLUE}Cleaned persons vaccinated data{BASIC}")
 
@@ -212,6 +261,8 @@ def clean_vaccination_data(dataframe):
 
     result_df = result_df.reset_index(drop=True)
 
+    result_df = fix_negative_values(result_df, 'new_vaccine_doses_administered', 'cumulative_vaccine_doses_administered')
+
     print(f"{BLUE}Cleaned persons fully vaccinated data{BASIC}")
 
     result_df = result_df.groupby('location_key').apply(process_group, new_column_name='new_vaccine_doses_administered',
@@ -219,6 +270,8 @@ def clean_vaccination_data(dataframe):
                                                         include_groups=True)
 
     result_df = result_df.reset_index(drop=True)
+
+    result_df = fix_negative_values(result_df, 'new_vaccine_doses_administered', 'cumulative_vaccine_doses_administered')
 
     print(f"{BLUE}Cleaned vaccine doses administered data{BASIC}")
 
@@ -499,7 +552,7 @@ def clean_health_data(dataframe):
 def main():
     start_time = time.time()
 
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-a8b1ef636fd3.json" # path to API key
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/ferrous-destiny-424600-h9-2ab5d0de9937.json" # path to API key
     client = bigquery.Client()
 
     # Create catalog if not exists
@@ -633,8 +686,8 @@ def main():
 
     query = ('select location_key, date, iso_3166_1_alpha_3, smoking_prevalence, diabetes_prevalence, '
              'hospital_beds_per_1000, nurses_per_1000, physicians_per_1000, health_expenditure_usd, '
-             'population_urban, population_age_80_and_older, clustered_population, stringency_index, '
-             'emergency_investment_in_healthcare, investment_in_vaccines, fiscal_measures, income_support '
+             'population_urban, population_age_80_and_older, population_clustered, stringency_index, '
+             'emergency_investment_in_healthcare, investment_in_vaccines, fiscal_measures '
              'from bigquery-public-data.covid19_open_data.covid19_open_data '
              'where aggregation_level = 0')
     query_job = client.query(query)
@@ -825,12 +878,11 @@ def main():
         'highest_salary',
         'population_urban',
         'population_age_80_and_older',
-        'clustered_population',
+        'population_clustered',
         'stringency_index',
         'emergency_investment_in_healthcare',
         'investment_in_vaccines',
-        'fiscal_measures',
-        'income_support',
+        'fiscal_measures'
     ]
 
     # Filling NaN values with zeros in the listed columns
