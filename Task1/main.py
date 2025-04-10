@@ -261,7 +261,7 @@ def clean_vaccination_data(dataframe):
 
     result_df = result_df.reset_index(drop=True)
 
-    result_df = fix_negative_values(result_df, 'new_vaccine_doses_administered', 'cumulative_vaccine_doses_administered')
+    result_df = fix_negative_values(result_df, 'new_persons_fully_vaccinated', 'cumulative_persons_fully_vaccinated')
 
     print(f"{BLUE}Cleaned persons fully vaccinated data{BASIC}")
 
