@@ -215,6 +215,16 @@ def clean_incidence_data(dataframe):
 
     print(f"{BLUE}Cleaned COVID-19 tests data{BASIC}")
 
+    result_df = result_df.groupby('location_key').apply(process_group, new_column_name='new_recovered',
+                                                        cumulative_column_name='cumulative_recovered',
+                                                        include_groups=True)
+
+    result_df = result_df.reset_index(drop=True)
+
+    result_df = fix_negative_values(result_df, 'new_recovered', 'cumulative_recovered')
+
+    print(f"{BLUE}Cleaned COVID-19 recovery data{BASIC}")
+
     print(f"{BLUE}Cleaned COVID-19 incidents data{BASIC}")
 
     return result_df
@@ -594,7 +604,8 @@ def main():
     # date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested
     print(f"\n\n{GREEN}Started extracting and cleaning COVID-19 incidents data{BASIC}")
 
-    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested '
+    query = ('select location_key, date, new_confirmed, cumulative_confirmed, new_tested, cumulative_tested,'
+             'new_recovered, cumulative_recovered '
              'from bigquery-public-data.covid19_open_data.covid19_open_data '
              'where aggregation_level = 0')
     query_job = client.query(query)
@@ -607,6 +618,8 @@ def main():
     print(f"Number of records with empty fields in cumulative_confirmed: {df2['cumulative_confirmed'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in new_tested: {df2['new_tested'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_tested: {df2['cumulative_tested'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_recovered: {df2['new_recovered'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_recovered: {df2['cumulative_recovered'].isnull().sum().sum()}")
 
     df2 = clean_incidence_data(df2)
 
@@ -616,6 +629,8 @@ def main():
     print(f"Number of records with empty fields in cumulative_confirmed: {df2['cumulative_confirmed'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in new_tested: {df2['new_tested'].isnull().sum().sum()}")
     print(f"Number of records with empty fields in cumulative_tested: {df2['cumulative_tested'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in new_recovered: {df2['new_recovered'].isnull().sum().sum()}")
+    print(f"Number of records with empty fields in cumulative_recovered: {df2['cumulative_recovered'].isnull().sum().sum()}")
 
     df2.to_csv('exported/incidence.csv', index=False)
 
